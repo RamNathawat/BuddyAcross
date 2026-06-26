@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/*
+ * ============================================================
+ * BuddyAcross Design System
+ * ============================================================
+ * Modern, minimal, mobile-first design tokens.
+ * Built on shadcn/ui conventions with Tailwind v4 @theme.
+ * ============================================================
+ */
+
+@theme {
+  /* ── Colors (HSL-based for shadcn/ui compatibility) ────── */
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(224 71% 4%);
+
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(224 71% 4%);
+
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(224 71% 4%);
+
+  --color-primary: hsl(252 85% 60%);
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  --color-secondary: hsl(220 14% 96%);
+  --color-secondary-foreground: hsl(224 71% 4%);
+
+  --color-muted: hsl(220 14% 96%);
+  --color-muted-foreground: hsl(220 9% 46%);
+
+  --color-accent: hsl(220 14% 96%);
+  --color-accent-foreground: hsl(224 71% 4%);
+
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --color-success: hsl(142 71% 45%);
+  --color-success-foreground: hsl(0 0% 100%);
+
+  --color-warning: hsl(38 92% 50%);
+  --color-warning-foreground: hsl(0 0% 100%);
+
+  --color-border: hsl(220 13% 91%);
+  --color-input: hsl(220 13% 91%);
+  --color-ring: hsl(252 85% 60%);
+
+  /* ── Radius ────────────────────────────────────────────── */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* ── Shadows ───────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+
+  /* ── Container ─────────────────────────────────────────── */
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+
+  /* ── Animations ────────────────────────────────────────── */
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-slide-down: slide-down 0.3s ease-out;
+  --animate-scale-in: scale-in 0.2s ease-out;
+}
+
+/* ── Dark Mode ───────────────────────────────────────────── */
+.dark {
+  --color-background: hsl(224 71% 4%);
+  --color-foreground: hsl(210 20% 98%);
+
+  --color-card: hsl(224 45% 8%);
+  --color-card-foreground: hsl(210 20% 98%);
+
+  --color-popover: hsl(224 45% 8%);
+  --color-popover-foreground: hsl(210 20% 98%);
+
+  --color-primary: hsl(252 85% 65%);
+  --color-primary-foreground: hsl(0 0% 100%);
+
+  --color-secondary: hsl(215 20% 14%);
+  --color-secondary-foreground: hsl(210 20% 98%);
+
+  --color-muted: hsl(215 20% 14%);
+  --color-muted-foreground: hsl(218 10% 55%);
+
+  --color-accent: hsl(215 20% 14%);
+  --color-accent-foreground: hsl(210 20% 98%);
+
+  --color-destructive: hsl(0 62% 50%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+
+  --color-success: hsl(142 71% 40%);
+  --color-success-foreground: hsl(0 0% 100%);
+
+  --color-warning: hsl(38 92% 45%);
+  --color-warning-foreground: hsl(0 0% 100%);
+
+  --color-border: hsl(215 20% 17%);
+  --color-input: hsl(215 20% 17%);
+  --color-ring: hsl(252 85% 65%);
+}
+
+/* ── Keyframes ───────────────────────────────────────────── */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ── Base Styles ─────────────────────────────────────────── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Focus ring for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+@layer base {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted-foreground);
+  }
+}

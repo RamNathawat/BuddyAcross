@@ -1,0 +1,73 @@
+Have you worked these stacks before?
+Frontend: Next.js (App Router)
+Backend: Node.js + Express
+Database: PostgreSQL
+Auth: OTP-based (Twilio or similar)
+Payments: escrow
+Storage: Cloudinary
+Task posting + multi-bid system
+Zone-based email alerts
+KYC flow (Aadhaar-based)
+Review/rating system
+Commission logic
+
+
+BuddyAcross is a two-sided task marketplace. It connects people who need local tasks done (Taskers) with people who want to earn by doing them (Buddies).
+How the platform works:
+A Tasker comes to the platform, posts a task — could be anything like home repair, delivery, cleaning, furniture assembly — sets a budget and a location. Buddies in that area get notified, check the task, and place their bids. The Taskerreviews all the bids and picks the one that works best for them. Once a Buddy is selected, they can chat directly to sort out the details. The task gets done, the Tasker pays, and then leaves a review for the Buddy.
+Two sides of the platform:
+Tasker side — post tasks, receive multiple bids, compare and accept, chat with the Buddy, payand review
+Buddy side — browse tasks in your zone, place bids, get hired, chat with the Tasker, complete the job and get paid
+Buddies go through KYC verification, there's an escrow system and a review system
+
+
+Core Features:
+Authentication & Onboarding
+Separate registration and login flows for Tasker and Buddy
+Phone number based OTP login
+Buddy goes through Aadhaar KYC verification before they can bid on anything
+Tasker can start posting immediately after signup
+
+Task Management:
+Tasker posts a task with title, description, budget, zone/location, and category
+Task is visible to all Buddies in that zone
+Buddies get notified when a relevant task is posted in their zone
+Tasker can edit or cancel a task before any bid is accepted
+
+Bidding System
+Buddies can place a bid with their price and a short note
+Tasker sees all bids on their task and can compare
+Tasker accepts one bid, other bids are automatically closed
+Minimum task budget is ₹300
+
+Chat
+Basic in-app chat opens between Tasker and Buddy only after a bid is accepted
+Used to coordinate task details, timing, location etc.
+
+Payments & Escrow
+Manual UPI escrow — Tasker pays into escrow when accepting a bid
+Payment is held until task is marked complete
+Buddy gets paid after Tasker confirms completion
+
+Reviews
+After task completion, Tasker can rate and review the Buddy
+Review shows on Buddy's public profile
+Helps future Taskers make decisions
+
+Admin Panel (very imp)
+User management — view all Taskers and Buddies, activate/deactivate accounts, see KYC status and approve or reject manually
+
+Task management — view all active, completed, and cancelled tasks, ability to intervene or remove a task if reported
+
+Bid management — visibility into all bids on any task
+Escrow management — see all payments held in escrow, manually trigger release or refund in case of disputes
+
+Dispute resolution — flag raised by Tasker or Buddy lands here, admin reviews chat history and task details and decides outcome
+
+Strike management — view Buddy strike history, manually add or remove strikes, suspend accounts
+
+Review moderation — ability to remove fake or abusive reviews
+
+Basic analytics — total tasks posted, completed, cancelled, total commission earned, new signups per week
+
+I’m looking to start with a very lean MV, mainly to validate the idea
