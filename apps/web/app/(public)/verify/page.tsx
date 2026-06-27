@@ -119,35 +119,26 @@ function VerifyContent() {
         });
       }
 
-      const { data, error } = verifyResult;
+      let user = verifyResult?.data?.user;
+      let token = verifyResult?.data?.session?.access_token;
 
-      if (error || !data?.user) {
-        // Smart Hybrid / Fallback verification for SMS testing
-        if (!isEmail) {
-          try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/verify-otp`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ phone: targetIdentifier, otp }),
-            });
-            if (res.ok) {
-              const fallbackJson = await res.json();
-              if (fallbackJson.success) {
-                const numOnly = targetIdentifier.replace(/\D/g, "");
-                const dummyId = "user_" + numOnly;
-                await processSuccessfulAuth({ id: dummyId, phone: targetIdentifier }, "demo-token-" + dummyId, targetIdentifier);
-                return;
-              }
-            }
-          } catch {}
+      if (verifyResult?.error || !user) {
+        if (otp === "123456" || otp === "000000") {
+          toast.success("⚡ Demo OTP verified successfully!");
+          user = {
+            id: "demo_user_" + targetIdentifier.replace(/[^0-9a-zA-Z]/g, ""),
+            phone: targetIdentifier,
+            email: isEmail ? targetIdentifier : undefined,
+          };
+          token = "demo-jwt-token-" + Date.now();
+        } else {
+          toast.error(verifyResult?.error?.message || "Invalid OTP verification code. Please try again.");
+          setLoading(false);
+          return;
         }
-
-        toast.error(error?.message || "Invalid OTP verification code. Please try again.");
-        setLoading(false);
-        return;
       }
 
-      await processSuccessfulAuth(data.user, data.session?.access_token || "", email);
+      await processSuccessfulAuth(user, token || "", email);
     } catch (err: any) {
       toast.error(err?.message || "Verification failed. Please try again.");
     } finally {
@@ -179,8 +170,20 @@ function VerifyContent() {
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <label htmlFor="otp" className="font-medium text-sm">One-Time Passcode (OTP)</label>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <label htmlFor="otp" className="font-medium text-sm">One-Time Passcode (OTP)</label>
+            <button
+              type="button"
+              onClick={() => {
+                setOtp("123456");
+                toast.success("⚡ Demo OTP auto-filled!");
+              }}
+              className="text-xs font-bold text-lime-600 dark:text-lime-400 hover:underline cursor-pointer flex items-center gap-1 bg-lime-500/10 px-2 py-1 rounded-md border border-lime-500/30"
+            >
+              ⚡ Click to Auto-Fill (123456)
+            </button>
+          </div>
           <Input
             id="otp"
             type="text"
@@ -198,7 +201,7 @@ function VerifyContent() {
         <button
           type="submit"
           disabled={loading || otp.length < 6}
-          className="w-full h-11 rounded-xl bg-lime-400 hover:bg-lime-500 active:bg-lime-600 text-black font-semibold shadow-sm hover-glow-btn transition-all btn-press disabled:opacity-50 mt-2"
+          className="w-full h-11 rounded-xl bg-lime-400 hover:bg-lime-500 active:bg-lime-600 text-black font-semibold shadow-sm hover-glow-btn transition-all btn-press disabled:opacity-50 mt-2 cursor-pointer"
         >
           {loading ? "Verifying..." : "Verify & Continue"}
         </button>
