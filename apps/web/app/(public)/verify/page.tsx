@@ -6,7 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
-import { Mail, CheckCircle2, Sparkles, ArrowLeft } from "lucide-react";
+import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
@@ -164,15 +164,7 @@ function VerifyContent() {
           </p>
         </div>
 
-        <div className="pt-2 flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => processSuccessfulAuth({ id: "demo_user_" + Math.floor(Math.random() * 1000), email }, "demo-token", email)}
-            className="w-full h-11 rounded-xl bg-lime-400 hover:bg-lime-500 active:bg-lime-600 text-black font-extrabold shadow-md glow-lime transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <Sparkles className="size-4" /> ⚡ Demo Login (Simulate Email Click)
-          </button>
-
+        <div className="pt-2">
           <Link
             href="/login"
             className="w-full h-11 rounded-xl border border-border hover:bg-secondary/40 text-foreground font-semibold transition-all flex items-center justify-center gap-2 text-sm"
