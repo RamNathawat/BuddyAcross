@@ -1,9 +1,16 @@
 import { z } from "zod";
 
 export const submitKycSchema = z.object({
-  aadhaarFront: z.string().url("Valid Aadhaar front URL is required"),
-  aadhaarBack: z.string().url("Valid Aadhaar back URL is required"),
-  selfie: z.string().url("Valid selfie URL is required"),
+  aadhaarFront: z.string().min(1, "Aadhaar front is required"),
+  aadhaarBack: z.string().min(1, "Aadhaar back is required"),
+  selfie: z.string().min(1, "Selfie is required"),
+  accountHolder: z.string().optional(),
+  accountNumber: z.string().optional(),
+  ifscCode: z.string().optional(),
+  emergencyName: z.string().optional(),
+  emergencyPhone: z.string().optional(),
+  skills: z.array(z.string()).optional(),
+  zones: z.array(z.string()).optional(),
 });
 
 export type SubmitKycDto = z.infer<typeof submitKycSchema>;

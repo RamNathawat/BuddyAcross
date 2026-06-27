@@ -4,6 +4,7 @@ import { users, buddyProfiles, kycSubmissions } from "../db/schema.js";
 import type { SyncUserDto } from "../validation/auth.schema.js";
 import type { CreateProfileDto } from "../validation/user.schema.js";
 import { createAppError } from "../middleware/error-handler.js";
+import { supabaseAdmin } from "../config/supabase.js";
 
 export class UserService {
   /**
@@ -16,17 +17,35 @@ export class UserService {
       .where(eq(users.id, dto.id))
       .limit(1);
 
+    const actualEmail = dto.email && dto.email.includes("@") ? dto.email : null;
+    const actualPhone = dto.phone || (dto.email && !dto.email.includes("@") ? dto.email : null);
+    const actualName = dto.fullName || (actualEmail ? actualEmail.split("@")[0] : actualPhone || "New User");
+
     if (existing.length > 0) {
-      return existing[0];
+      const u = existing[0];
+      if ((dto.role && !u.role) || (actualPhone && !u.phone) || (actualName !== "New User" && u.fullName === "New User")) {
+        const updated = await db
+          .update(users)
+          .set({
+            role: dto.role || u.role,
+            phone: actualPhone || u.phone,
+            fullName: actualName !== "New User" ? actualName : u.fullName,
+          })
+          .where(eq(users.id, dto.id))
+          .returning();
+        return updated[0];
+      }
+      return u;
     }
 
     const inserted = await db
       .insert(users)
       .values({
         id: dto.id,
-        email: dto.email || null,
-        phone: dto.phone || null,
-        fullName: dto.fullName || dto.email?.split("@")[0] || "New User",
+        email: actualEmail,
+        phone: actualPhone,
+        fullName: actualName,
+        role: dto.role || null,
       })
       .returning();
 
@@ -98,6 +117,15 @@ export class UserService {
 
     const user = updatedUsers[0];
 
+    // Sync role to Supabase Auth app_metadata
+    try {
+      await supabaseAdmin.auth.admin.updateUserById(userId, {
+        app_metadata: { role: dto.role },
+      });
+    } catch (err) {
+      console.warn("Could not sync role to Supabase Auth metadata:", err);
+    }
+
     // 2. If role is buddy, create/update buddy profile
     if (dto.role === "buddy") {
       const existingProfile = await db
@@ -106,15 +134,19 @@ export class UserService {
         .where(eq(buddyProfiles.userId, userId))
         .limit(1);
 
+      const profileData = {
+        bio: dto.bio || null,
+        city: dto.city || null,
+        state: dto.state || null,
+        pincode: dto.pincode || null,
+        skills: dto.skills || null,
+      };
+
       if (existingProfile.length > 0) {
         const updated = await db
           .update(buddyProfiles)
           .set({
-            bio: dto.bio || null,
-            city: dto.city!,
-            state: dto.state!,
-            pincode: dto.pincode!,
-            skills: dto.skills!,
+            ...profileData,
             updatedAt: new Date(),
           })
           .where(eq(buddyProfiles.userId, userId))
@@ -126,11 +158,7 @@ export class UserService {
           .insert(buddyProfiles)
           .values({
             userId,
-            bio: dto.bio || null,
-            city: dto.city!,
-            state: dto.state!,
-            pincode: dto.pincode!,
-            skills: dto.skills!,
+            ...profileData,
             kycStatus: "pending",
           })
           .returning();

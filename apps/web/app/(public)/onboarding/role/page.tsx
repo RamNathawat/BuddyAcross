@@ -3,13 +3,34 @@
 import { useRouter } from "next/navigation";
 import { UserCheck, Briefcase } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RoleSelectionPage() {
   const router = useRouter();
+  const supabase = createClient();
 
-  const handleSelectRole = (role: "tasker" | "buddy") => {
+  const handleSelectRole = async (role: "tasker" | "buddy") => {
     localStorage.setItem("buddy_user_role", role);
-    router.push(`/onboarding/${role}`);
+    const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+    const userEmail = localStorage.getItem("buddy_user_email") || `${userId}@example.com`;
+
+    try {
+      await supabase.from("users").upsert({
+        id: userId,
+        email: userEmail,
+        full_name: userEmail.split("@")[0],
+        role: role,
+        updated_at: new Date().toISOString(),
+      });
+    } catch {
+      // Fallback
+    }
+
+    if (role === "buddy") {
+      router.push("/onboarding/kyc");
+    } else {
+      router.push(`/onboarding/${role}`);
+    }
   };
 
   return (

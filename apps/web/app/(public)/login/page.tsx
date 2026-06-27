@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
-  const [role, setRole] = useState<"tasker" | "buddy">("tasker");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -23,7 +22,6 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    localStorage.setItem("buddy_user_role", role);
 
     try {
       const isEmail = cleanInput.includes("@");
@@ -115,40 +113,6 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Role Selection Toggle */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
-                Select your active view
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setRole("tasker")}
-                  className={`text-left rounded-xl border-2 p-3.5 transition-all btn-press ${
-                    role === "tasker"
-                      ? "border-lime-400 bg-lime-400/10 glow-lime shadow-xs"
-                      : "border-border hover:border-lime-400/40 bg-card/50"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">Task Poster</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Hire for tasks</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setRole("buddy")}
-                  className={`text-left rounded-xl border-2 p-3.5 transition-all btn-press ${
-                    role === "buddy"
-                      ? "border-lime-400 bg-lime-400/10 glow-lime shadow-xs"
-                      : "border-border hover:border-lime-400/40 bg-card/50"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">Buddy</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Earn money</div>
-                </button>
-              </div>
-            </div>
-
             {/* Form Fields */}
             <div className="space-y-4 pt-1">
               <div className="space-y-1.5">

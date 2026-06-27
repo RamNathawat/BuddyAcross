@@ -5,33 +5,70 @@ import { useRouter } from "next/navigation";
 import { ShieldCheck, Radar, Wallet, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 export default function BuddyDashboardPage() {
   const [userName, setUserName] = useState("Buddy");
   const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    const savedName = localStorage.getItem("buddy_user_name");
-    if (savedName) setUserName(savedName);
+    async function initDashboard() {
+      let userId = localStorage.getItem("buddy_user_id");
+      if (!userId) {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id) {
+          userId = authData.user.id;
+          localStorage.setItem("buddy_user_id", userId);
+        }
+      }
 
-    // Protected Route RBAC & KYC Check
-    const kycStatus = localStorage.getItem("buddy_kyc_status") || "approved";
-    const role = localStorage.getItem("buddy_user_role") || "buddy";
+      if (userId) {
+        try {
+          const { data: userRow } = await supabase.from("users").select("full_name, role").eq("id", userId).single();
+          if (userRow?.full_name) {
+            setUserName(userRow.full_name);
+            localStorage.setItem("buddy_user_name", userRow.full_name);
+          }
+          if (userRow?.role) {
+            localStorage.setItem("buddy_user_role", userRow.role);
+          }
 
-    if (role !== "buddy") {
-      toast.error("Unauthorized access");
-      router.push("/unauthorized");
-      return;
+          const { data: profileRow } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", userId).single();
+          if (profileRow?.kyc_status) {
+            localStorage.setItem("buddy_kyc_status", profileRow.kyc_status);
+          }
+        } catch {}
+      } else {
+        const savedName = localStorage.getItem("buddy_user_name");
+        if (savedName) setUserName(savedName);
+      }
+
+      const kycStatus = localStorage.getItem("buddy_kyc_status") || "unverified";
+      const role = localStorage.getItem("buddy_user_role") || "buddy";
+
+      if (role !== "buddy") {
+        toast.error("Unauthorized access");
+        router.push("/unauthorized");
+        return;
+      }
+
+      if (kycStatus === "unverified") {
+        toast.info("Please complete your KYC onboarding");
+        router.push("/onboarding/kyc");
+        return;
+      }
+
+      if (kycStatus !== "approved") {
+        toast.warning("Your KYC is still pending review");
+        router.push("/pending-approval");
+        return;
+      }
+
+      setAuthorized(true);
     }
-
-    if (kycStatus !== "approved") {
-      toast.warning("Your KYC is still pending review");
-      router.push("/pending-approval");
-      return;
-    }
-
-    setAuthorized(true);
+    initDashboard();
   }, [router]);
 
   if (!authorized) {

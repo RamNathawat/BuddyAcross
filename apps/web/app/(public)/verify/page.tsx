@@ -22,32 +22,85 @@ function VerifyContent() {
     localStorage.setItem("buddy_auth_token", token);
     localStorage.setItem("buddy_user_id", user.id);
     if (userEmail || user.email) localStorage.setItem("buddy_user_email", userEmail || user.email);
+    if (user.phone) localStorage.setItem("buddy_user_phone", user.phone);
+
+    let userRole = localStorage.getItem("buddy_user_role");
+    let kycStatus = localStorage.getItem("buddy_kyc_status");
 
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id, email: userEmail || user.email }),
+        body: JSON.stringify({
+          id: user.id,
+          email: userEmail || user.email,
+          phone: user.phone,
+          role: userRole || undefined,
+          fullName: localStorage.getItem("buddy_user_name") || undefined,
+        }),
       });
+
+      const apiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (apiRes.ok) {
+        const json = await apiRes.json();
+        const userData = json.data?.user;
+        const profileData = json.data?.profile;
+        const kycData = json.data?.kyc;
+
+        if (userData?.role) {
+          userRole = userData.role;
+          localStorage.setItem("buddy_user_role", userRole!);
+        }
+        if (userData?.fullName) {
+          localStorage.setItem("buddy_user_name", userData.fullName);
+        }
+        if (profileData?.kycStatus || profileData?.kyc_status) {
+          kycStatus = profileData.kycStatus || profileData.kyc_status;
+          localStorage.setItem("buddy_kyc_status", kycStatus!);
+        } else if (kycData?.status) {
+          kycStatus = kycData.status;
+          localStorage.setItem("buddy_kyc_status", kycStatus!);
+        }
+      }
+
+      if (!userRole) {
+        const { data: userRow } = await supabase.from("users").select("role, full_name").eq("id", user.id).single();
+        if (userRow?.role) {
+          userRole = userRow.role;
+          localStorage.setItem("buddy_user_role", userRole!);
+        }
+        if (userRow?.full_name) {
+          localStorage.setItem("buddy_user_name", userRow.full_name);
+        }
+      }
+
+      if (userRole === "buddy" && !kycStatus) {
+        const { data: profileRow } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", user.id).single();
+        if (profileRow?.kyc_status) {
+          kycStatus = profileRow.kyc_status;
+          localStorage.setItem("buddy_kyc_status", kycStatus!);
+        }
+      }
     } catch {}
 
     toast.success("Identity verified successfully!");
 
-    const savedRole = localStorage.getItem("buddy_user_role");
-    if (!savedRole) {
+    if (!userRole) {
       router.push("/onboarding/role");
-    } else if (savedRole === "tasker") {
+    } else if (userRole === "tasker") {
       router.push("/tasker");
-    } else if (savedRole === "buddy") {
-      const kycStatus = localStorage.getItem("buddy_kyc_status");
+    } else if (userRole === "buddy") {
       if (kycStatus === "approved") {
         router.push("/buddy");
       } else if (kycStatus === "pending" || kycStatus === "rejected") {
         router.push("/pending-approval");
       } else {
-        router.push("/onboarding/buddy");
+        router.push("/onboarding/kyc");
       }
-    } else if (savedRole === "admin") {
+    } else if (userRole === "admin") {
       router.push("/admin");
     } else {
       router.push("/onboarding/role");

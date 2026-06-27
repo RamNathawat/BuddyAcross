@@ -2,9 +2,10 @@ import { z } from "zod";
 
 export const syncUserSchema = z.object({
   id: z.string().uuid(),
-  email: z.string().email().optional(),
-  phone: z.string().optional(),
-  fullName: z.string().min(2, "Full name must be at least 2 characters").optional(),
+  email: z.string().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  fullName: z.string().optional().nullable(),
+  role: z.enum(["buddy", "tasker", "admin"]).optional().nullable(),
 });
 
 export type SyncUserDto = z.infer<typeof syncUserSchema>;

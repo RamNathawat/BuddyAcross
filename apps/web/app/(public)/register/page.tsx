@@ -29,6 +29,9 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    localStorage.removeItem("buddy_kyc_status");
+    localStorage.removeItem("buddy_live_kyc_submission");
+    localStorage.removeItem("buddy_kyc_rejection_reason");
     localStorage.setItem("buddy_user_role", role);
     localStorage.setItem("buddy_user_name", fullName);
     localStorage.setItem("buddy_profile_city", city);
@@ -47,6 +50,12 @@ export default function RegisterPage() {
             targetIdentifier = "+" + targetIdentifier;
           }
         }
+      }
+
+      if (isEmail) {
+        localStorage.setItem("buddy_user_email", targetIdentifier);
+      } else {
+        localStorage.setItem("buddy_user_phone", targetIdentifier);
       }
 
       let authError = null;

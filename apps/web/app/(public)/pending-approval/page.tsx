@@ -7,14 +7,34 @@ import { Clock, RefreshCw, LogOut, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 export default function PendingApprovalPage() {
   const [status, setStatus] = useState("pending");
   const [reason, setReason] = useState("");
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    const checkCurrentStatus = () => {
+    const checkCurrentStatus = async () => {
+      let userId = localStorage.getItem("buddy_user_id");
+      if (!userId) {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData?.user?.id) {
+          userId = authData.user.id;
+          localStorage.setItem("buddy_user_id", userId);
+        }
+      }
+
+      if (userId) {
+        try {
+          const { data } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", userId).single();
+          if (data?.kyc_status) {
+            localStorage.setItem("buddy_kyc_status", data.kyc_status);
+          }
+        } catch {}
+      }
+
       const savedStatus = localStorage.getItem("buddy_kyc_status") || "pending";
       const savedReason = localStorage.getItem("buddy_kyc_rejection_reason") || "";
       if (savedStatus === "approved") {
@@ -30,8 +50,31 @@ export default function PendingApprovalPage() {
     return () => window.removeEventListener("storage", checkCurrentStatus);
   }, [router]);
 
-  const handleCheckStatus = () => {
+  const handleCheckStatus = async () => {
     toast.info("Checking latest status...");
+    let userId = localStorage.getItem("buddy_user_id");
+    if (!userId) {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id) {
+        userId = authData.user.id;
+        localStorage.setItem("buddy_user_id", userId);
+      }
+    }
+
+    if (userId) {
+      try {
+        const { data } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", userId).single();
+        if (data?.kyc_status) {
+          localStorage.setItem("buddy_kyc_status", data.kyc_status);
+        } else {
+          const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("user_id", userId).single();
+          if (kycRow?.status) {
+            localStorage.setItem("buddy_kyc_status", kycRow.status);
+          }
+        }
+      } catch {}
+    }
+
     const current = localStorage.getItem("buddy_kyc_status") || "pending";
     if (current === "approved") {
       toast.success("Congratulations! Your KYC is approved!");

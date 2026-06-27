@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ShieldCheck, UploadCloud, CheckCircle2, Camera, X, RefreshCw, ArrowLeft, ArrowRight, User, CreditCard, Briefcase, MapPin, PhoneCall, Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 const AVAILABLE_SKILLS = [
   "Plumbing & Repairs", "Electrical Works", "Home Cleaning", 
@@ -31,12 +32,15 @@ const STEPS = [
 export default function BuddyKycUploadPage() {
   const [step, setStep] = useState<number>(1);
   const router = useRouter();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
 
-  // Step 1: Personal
-  const [fullName, setFullName] = useState("Ravi Kumar");
-  const [phoneNumber, setPhoneNumber] = useState("+91 98765 43210");
-  const [email, setEmail] = useState("ravi.kumar@example.com");
+  const [fullName, setFullName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [pincode, setPincode] = useState("");
 
   // Step 2: Docs
   const [frontUrl, setFrontUrl] = useState<string>("");
@@ -45,19 +49,19 @@ export default function BuddyKycUploadPage() {
   const [cameraOpen, setCameraOpen] = useState(false);
 
   // Step 3: Bank
-  const [accountHolder, setAccountHolder] = useState("Ravi Kumar");
-  const [accountNumber, setAccountNumber] = useState("501002349871");
-  const [ifscCode, setIfscCode] = useState("HDFC0001234");
+  const [accountHolder, setAccountHolder] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [ifscCode, setIfscCode] = useState("");
 
   // Step 4: Skills
-  const [selectedSkills, setSelectedSkills] = useState<string[]>(["Plumbing & Repairs", "Electrical Works"]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   // Step 5: Zones
   const [selectedZones, setSelectedZones] = useState<string[]>(["Indiranagar", "Koramangala", "HSR Layout"]);
 
   // Step 6: Emergency Contact
-  const [emergencyName, setEmergencyName] = useState("Suresh Kumar (Brother)");
-  const [emergencyPhone, setEmergencyPhone] = useState("+91 98111 22334");
+  const [emergencyName, setEmergencyName] = useState("");
+  const [emergencyPhone, setEmergencyPhone] = useState("");
 
   // Refs for camera & files
   const frontRef = useRef<HTMLInputElement>(null);
@@ -67,6 +71,39 @@ export default function BuddyKycUploadPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const currentStepInfo = STEPS.find((s) => s.id === step) || STEPS[0];
+
+  useEffect(() => {
+    const savedName = localStorage.getItem("buddy_user_name") || "";
+    if (savedName) {
+      setFullName(savedName);
+      setAccountHolder(savedName);
+    }
+    const savedEmail = localStorage.getItem("buddy_user_email") || "";
+    const savedPhone = localStorage.getItem("buddy_user_phone") || "";
+    const savedIdentifier = localStorage.getItem("buddy_user_identifier") || "";
+    
+    if (savedEmail || (savedIdentifier && savedIdentifier.includes("@"))) {
+      setEmail(savedEmail || savedIdentifier);
+    }
+    if (savedPhone || (savedIdentifier && !savedIdentifier.includes("@"))) {
+      setPhoneNumber(savedPhone || savedIdentifier);
+    }
+
+    const savedCity = localStorage.getItem("buddy_profile_city") || "";
+    if (savedCity) setCity(savedCity);
+    const savedState = localStorage.getItem("buddy_profile_state") || "";
+    if (savedState) setState(savedState);
+    const savedPincode = localStorage.getItem("buddy_profile_pincode") || "";
+    if (savedPincode) setPincode(savedPincode);
+
+    const savedSkills = localStorage.getItem("buddy_profile_skills");
+    if (savedSkills) {
+      try {
+        const parsed = JSON.parse(savedSkills);
+        if (Array.isArray(parsed) && parsed.length > 0) setSelectedSkills(parsed);
+      } catch {}
+    }
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: "front" | "back" | "selfie") => {
     const file = e.target.files?.[0];
@@ -178,6 +215,10 @@ export default function BuddyKycUploadPage() {
   const handleNext = (e: React.FormEvent) => {
     e.preventDefault();
     if (step < 7) {
+      if (step === 1 && (!fullName.trim() || !phoneNumber.trim())) {
+        toast.error("Please enter your full name and phone number to proceed.");
+        return;
+      }
       if (step === 2 && (!frontUrl || !backUrl || !selfieUrl)) {
         toast.error("Please upload Aadhaar Front, Back, and Live Selfie to proceed (or click ⚡ Demo Fill above).");
         return;
@@ -205,7 +246,25 @@ export default function BuddyKycUploadPage() {
     let finalSelfie = selfieUrl;
 
     try {
-      toast.info("Submitting KYC application securely to Cloudinary...");
+      toast.info("Submitting profile & KYC securely...");
+      // Step 1: Save profile via API
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fullName,
+          role: "buddy",
+          city: city || undefined,
+          state: state || undefined,
+          pincode: pincode || undefined,
+          skills: selectedSkills,
+        }),
+      });
+
+      // Step 2: Submit KYC via API
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/kyc/submit`, {
         method: "POST",
         headers: {
@@ -216,6 +275,13 @@ export default function BuddyKycUploadPage() {
           aadhaarFront: frontUrl,
           aadhaarBack: backUrl,
           selfie: selfieUrl,
+          accountHolder,
+          accountNumber,
+          ifscCode,
+          emergencyName,
+          emergencyPhone,
+          skills: selectedSkills,
+          zones: selectedZones,
         }),
       });
 
@@ -229,10 +295,12 @@ export default function BuddyKycUploadPage() {
       // Offline fallback
     }
 
+    const locationDisplay = city ? (pincode ? `${city} (${pincode})` : city) : "Location not specified";
+
     const newRecord = {
       id: submissionId,
       buddyName: fullName,
-      city: "Bengaluru (560001)",
+      city: locationDisplay,
       skills: selectedSkills,
       zones: selectedZones,
       phone: phoneNumber,
@@ -249,6 +317,18 @@ export default function BuddyKycUploadPage() {
     };
 
     localStorage.setItem("buddy_live_kyc_submission", JSON.stringify(newRecord));
+    localStorage.setItem("buddy_kyc_status", "pending");
+    if (city) localStorage.setItem("buddy_profile_city", city);
+    if (state) localStorage.setItem("buddy_profile_state", state);
+    if (pincode) localStorage.setItem("buddy_profile_pincode", pincode);
+
+    const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+
+    try {
+      await supabase.from("buddy_profiles").update({ kyc_status: "pending" }).eq("user_id", userId);
+    } catch {
+      // Fallback
+    }
 
     toast.success("KYC Application submitted successfully!");
     router.push("/pending-approval");
@@ -382,6 +462,38 @@ export default function BuddyKycUploadPage() {
                     placeholder="you@example.com"
                     className="w-full h-11 px-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm"
                   />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-semibold mb-1.5 block">City</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g. Mumbai"
+                      className="w-full h-11 px-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1.5 block">State</label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      placeholder="e.g. Maharashtra"
+                      className="w-full h-11 px-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-semibold mb-1.5 block">Pincode</label>
+                    <input
+                      type="text"
+                      value={pincode}
+                      onChange={(e) => setPincode(e.target.value)}
+                      placeholder="e.g. 400001"
+                      className="w-full h-11 px-3 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-lime-400 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             )}

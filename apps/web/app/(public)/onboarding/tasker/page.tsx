@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
 
 export default function TaskerOnboardingPage() {
   const [fullName, setFullName] = useState("");
@@ -16,6 +17,7 @@ export default function TaskerOnboardingPage() {
   const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const supabase = createClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,11 +32,28 @@ export default function TaskerOnboardingPage() {
 
     setLoading(true);
     const token = localStorage.getItem("buddy_auth_token") || "demo-token";
+    const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+    const userEmail = localStorage.getItem("buddy_user_email") || `${userId}@example.com`;
 
     localStorage.setItem("buddy_user_name", fullName);
     localStorage.setItem("buddy_profile_city", city);
 
     try {
+      await supabase.from("users").upsert({
+        id: userId,
+        email: userEmail,
+        full_name: fullName,
+        role: "tasker",
+        updated_at: new Date().toISOString(),
+      });
+
+      await supabase.from("taskers").upsert({
+        user_id: userId,
+        full_name: fullName,
+        city,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/profile`, {
         method: "POST",
         headers: {

@@ -6,6 +6,7 @@ import { ShieldCheck, Check, X, RotateCcw, Eye, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { createClient } from "@/lib/supabase/client";
 
 interface MockKycRecord {
   id: string;
@@ -26,6 +27,7 @@ export default function AdminDashboardPage() {
   const [queue, setQueue] = useState<MockKycRecord[]>(INITIAL_QUEUE);
   const [selectedDocs, setSelectedDocs] = useState<MockKycRecord | null>(null);
   const [filterTab, setFilterTab] = useState<"pending" | "reviewed" | "all">("pending");
+  const supabase = createClient();
 
   const filteredQueue = queue.filter((item) => {
     if (filterTab === "pending") return item.status === "pending";
@@ -34,20 +36,69 @@ export default function AdminDashboardPage() {
   });
 
   useEffect(() => {
-    try {
-      const liveSub = localStorage.getItem("buddy_live_kyc_submission");
-      if (liveSub) {
-        const parsed = JSON.parse(liveSub);
-        setQueue((prev) => {
-          const exists = prev.some((item) => item.id === parsed.id);
-          if (exists) return prev.map((item) => (item.id === parsed.id ? parsed : item));
-          return [parsed, ...prev];
+    async function fetchDbKyc() {
+      try {
+        const token = localStorage.getItem("buddy_auth_token") || "demo-token";
+        const apiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-      }
-    } catch {}
+        if (apiRes.ok) {
+          const json = await apiRes.json();
+          if (json.data && json.data.length > 0) {
+            const apiRecords: MockKycRecord[] = json.data.map((item: any) => ({
+              id: item.submission.id,
+              buddyName: item.user.fullName || "Buddy User",
+              city: item.profile.city ? (item.profile.pincode ? `${item.profile.city} (${item.profile.pincode})` : item.profile.city) : "Location not specified",
+              skills: item.profile.skills || item.submission.skills || ["General Service"],
+              submittedAgo: item.submission.submittedAgo || "Recently",
+              status: item.submission.status || "pending",
+              aadhaarFront: item.submission.aadhaarFront || "",
+              aadhaarBack: item.submission.aadhaarBack || "",
+              selfie: item.submission.selfie || "",
+              notes: item.submission.rejectionReason || "",
+            }));
+            setQueue(apiRecords);
+            return;
+          }
+        }
+      } catch {}
+
+      try {
+        const { data } = await supabase.from("kyc_submissions").select("*").order("submitted_at", { ascending: false });
+        if (data && data.length > 0) {
+          const dbRecords: MockKycRecord[] = data.map((row: any) => ({
+            id: row.id,
+            buddyName: row.buddy_name || "Buddy User",
+            city: row.city || "Location not specified",
+            skills: row.skills || ["General Service"],
+            submittedAgo: row.submitted_ago || "Recently",
+            status: row.status || "pending",
+            aadhaarFront: row.aadhaar_front || "",
+            aadhaarBack: row.aadhaar_back || "",
+            selfie: row.selfie || "",
+            notes: row.rejection_reason || "",
+          }));
+          setQueue(dbRecords);
+          return;
+        }
+      } catch {}
+
+      try {
+        const liveSub = localStorage.getItem("buddy_live_kyc_submission");
+        if (liveSub) {
+          const parsed = JSON.parse(liveSub);
+          setQueue((prev) => {
+            const exists = prev.some((item) => item.id === parsed.id);
+            if (exists) return prev.map((item) => (item.id === parsed.id ? parsed : item));
+            return [parsed, ...prev];
+          });
+        }
+      } catch {}
+    }
+    fetchDbKyc();
   }, []);
 
-  const handleReview = (id: string, action: "approved" | "rejected" | "resubmission_requested") => {
+  const handleReview = async (id: string, action: "approved" | "rejected" | "resubmission_requested") => {
     let reason = "";
     if (action === "rejected" || action === "resubmission_requested") {
       reason = window.prompt("Enter reason for rejection or resubmission request:") || "Invalid document";
@@ -70,9 +121,31 @@ export default function AdminDashboardPage() {
       })
     );
 
-    // Update buddy localStorage status so the logged in user sees immediate live approval across tabs
     localStorage.setItem("buddy_kyc_status", action);
     if (reason) localStorage.setItem("buddy_kyc_rejection_reason", reason);
+
+    try {
+      const token = localStorage.getItem("buddy_auth_token") || "demo-token";
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc/${id}/review`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          status: action,
+          rejectionReason: reason || undefined,
+        }),
+      });
+    } catch {}
+
+    try {
+      await supabase.from("kyc_submissions").update({ status: action, rejection_reason: reason }).eq("id", id);
+      const { data: kycRow } = await supabase.from("kyc_submissions").select("user_id").eq("id", id).single();
+      if (kycRow?.user_id) {
+        await supabase.from("buddy_profiles").update({ kyc_status: action }).eq("user_id", kycRow.user_id);
+      }
+    } catch {}
 
     toast.success(`KYC request #${id} marked as ${action.toUpperCase().replace("_", " ")}`);
     if (selectedDocs?.id === id) setSelectedDocs(null);
