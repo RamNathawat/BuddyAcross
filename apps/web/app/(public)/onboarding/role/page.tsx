@@ -13,9 +13,14 @@ export default function RoleSelectionPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center p-4">
-      <div className="w-full max-w-3xl space-y-8 animate-fade-in">
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-background relative overflow-hidden">
+      <div className="absolute inset-0 bg-grid-dots opacity-20 pointer-events-none" />
+
+      <div className="w-full max-w-3xl space-y-8 animate-fade-in relative z-10 py-12">
         <div className="text-center space-y-2">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-lime-400/10 border border-lime-400/30 text-lime-600 dark:text-lime-400 text-xs font-semibold mb-2">
+            <span>⚡ Phase 2 Onboarding</span>
+          </div>
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">How do you want to use BuddyAcross?</h1>
           <p className="text-muted-foreground text-base max-w-xl mx-auto">
             Choose your primary role. You can switch or manage account preferences anytime.
@@ -26,11 +31,11 @@ export default function RoleSelectionPage() {
           {/* Tasker Card */}
           <Card
             onClick={() => handleSelectRole("tasker")}
-            className="group cursor-pointer border-2 border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-md bg-card/60 backdrop-blur-sm p-2 flex flex-col justify-between relative overflow-hidden"
+            className="group cursor-pointer border-2 border-border hover:border-lime-400 transition-all duration-300 shadow-sm hover:shadow-md hover:glow-lime bg-card/80 backdrop-blur-sm p-2 flex flex-col justify-between relative overflow-hidden btn-press"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none group-hover:bg-primary/10 transition-colors" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none group-hover:bg-lime-400/20 transition-colors" />
             <CardHeader className="space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-lime-400/15 border border-lime-400/30 flex items-center justify-center text-lime-600 dark:text-lime-400 group-hover:scale-110 transition-transform duration-300">
                 <UserCheck className="size-7" />
               </div>
               <CardTitle className="text-2xl font-bold">I am a Tasker</CardTitle>
@@ -39,7 +44,7 @@ export default function RoleSelectionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="text-primary font-semibold text-sm flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+              <div className="text-lime-600 dark:text-lime-400 font-bold text-sm flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                 Continue as Tasker →
               </div>
             </CardContent>
@@ -48,11 +53,11 @@ export default function RoleSelectionPage() {
           {/* Buddy Card */}
           <Card
             onClick={() => handleSelectRole("buddy")}
-            className="group cursor-pointer border-2 border-border hover:border-primary transition-all duration-300 shadow-sm hover:shadow-md bg-card/60 backdrop-blur-sm p-2 flex flex-col justify-between relative overflow-hidden"
+            className="group cursor-pointer border-2 border-border hover:border-purple-500 transition-all duration-300 shadow-sm hover:shadow-md hover:shadow-purple-500/10 bg-card/80 backdrop-blur-sm p-2 flex flex-col justify-between relative overflow-hidden btn-press"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none group-hover:bg-purple-500/10 transition-colors" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none group-hover:bg-purple-500/20 transition-colors" />
             <CardHeader className="space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300">
+              <div className="w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform duration-300">
                 <Briefcase className="size-7" />
               </div>
               <CardTitle className="text-2xl font-bold">I am a Buddy</CardTitle>
@@ -61,7 +66,7 @@ export default function RoleSelectionPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-4">
-              <div className="text-purple-600 dark:text-purple-400 font-semibold text-sm flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+              <div className="text-purple-600 dark:text-purple-400 font-bold text-sm flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                 Continue as Buddy →
               </div>
             </CardContent>

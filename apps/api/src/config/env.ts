@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+try {
+  process.loadEnvFile(".env");
+} catch {
+  try {
+    process.loadEnvFile();
+  } catch {}
+}
+
 const envSchema = z.object({
   // Server
   PORT: z.coerce.number().default(4000),
@@ -8,17 +16,17 @@ const envSchema = z.object({
     .default("development"),
 
   // Supabase
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_URL: z.string().url().default("https://vbesyjbxclatvsqypnmc.supabase.co"),
+  SUPABASE_ANON_KEY: z.string().min(1).default("sb_publishable_ObScrj8Oz5kFVAF8lxd7eg_hTbmermj"),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).default("sb_secret_SMwlvBT2qEGmqjgO1BQq7Q_B3QXTTte"),
 
   // Database
-  DATABASE_URL: z.string().min(1),
+  DATABASE_URL: z.string().min(1).default("postgresql://postgres.vbesyjbxclatvsqypnmc:HZfj3z943pQqLJ6N@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"),
 
   // Cloudinary
-  CLOUDINARY_CLOUD_NAME: z.string().min(1),
-  CLOUDINARY_API_KEY: z.string().min(1),
-  CLOUDINARY_API_SECRET: z.string().min(1),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1).default("dummy-cloud"),
+  CLOUDINARY_API_KEY: z.string().min(1).default("123456789"),
+  CLOUDINARY_API_SECRET: z.string().min(1).default("dummy-secret"),
 
   // CORS
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),

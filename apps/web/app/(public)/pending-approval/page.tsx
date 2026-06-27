@@ -14,11 +14,21 @@ export default function PendingApprovalPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const savedStatus = localStorage.getItem("buddy_kyc_status") || "pending";
-    const savedReason = localStorage.getItem("buddy_kyc_rejection_reason") || "";
-    setStatus(savedStatus);
-    setReason(savedReason);
-  }, []);
+    const checkCurrentStatus = () => {
+      const savedStatus = localStorage.getItem("buddy_kyc_status") || "pending";
+      const savedReason = localStorage.getItem("buddy_kyc_rejection_reason") || "";
+      if (savedStatus === "approved") {
+        router.push("/buddy");
+      } else {
+        setStatus(savedStatus);
+        setReason(savedReason);
+      }
+    };
+
+    checkCurrentStatus();
+    window.addEventListener("storage", checkCurrentStatus);
+    return () => window.removeEventListener("storage", checkCurrentStatus);
+  }, [router]);
 
   const handleCheckStatus = () => {
     toast.info("Checking latest status...");

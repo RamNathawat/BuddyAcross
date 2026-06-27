@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const [role, setRole] = useState<"tasker" | "buddy">("tasker");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -17,72 +16,170 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes("@")) {
-      toast.error("Please enter a valid email address");
+    const cleanInput = email.trim();
+    if (!cleanInput) {
+      toast.error("Please enter your phone number or email address");
       return;
     }
 
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/verify?email=${encodeURIComponent(email)}`,
-        },
-      });
+    localStorage.setItem("buddy_user_role", role);
 
-      if (error) {
-        // Fallback for local demo mode when Supabase email is not configured
-        toast.info("Demo mode: Redirecting directly to OTP verification (use 123456)");
-      } else {
-        toast.success("OTP sent to your email!");
+    try {
+      const isEmail = cleanInput.includes("@");
+      let targetIdentifier = cleanInput;
+      if (!isEmail) {
+        targetIdentifier = targetIdentifier.replace(/[\s-]/g, "");
+        if (!targetIdentifier.startsWith("+")) {
+          if (targetIdentifier.length === 10) {
+            targetIdentifier = "+91" + targetIdentifier;
+          } else if (targetIdentifier.startsWith("91") && targetIdentifier.length === 12) {
+            targetIdentifier = "+" + targetIdentifier;
+          } else {
+            targetIdentifier = "+" + targetIdentifier;
+          }
+        }
       }
-      
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
-    } catch {
-      toast.info("Demo mode: Redirecting directly to OTP verification (use 123456)");
-      router.push(`/verify?email=${encodeURIComponent(email)}`);
+
+      let authError = null;
+
+      if (isEmail) {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: targetIdentifier,
+          options: {
+            emailRedirectTo: `${window.location.origin}/verify?email=${encodeURIComponent(targetIdentifier)}`,
+          },
+        });
+        authError = error;
+      } else {
+        const { error } = await supabase.auth.signInWithOtp({
+          phone: targetIdentifier,
+        });
+        authError = error;
+      }
+
+      if (authError) {
+        toast.error(authError.message || "Failed to send OTP. Please check your credentials.");
+        return;
+      }
+
+      toast.success("OTP code sent successfully!");
+      router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}`);
+    } catch (err: any) {
+      toast.error(err?.message || "An unexpected error occurred sending OTP.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-primary/10 bg-background/80 backdrop-blur-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
-          <CardDescription>Enter your email to receive a secure one-time passcode</CardDescription>
-        </CardHeader>
-        <form onSubmit={handleLogin}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                id="email"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-11"
-              />
+    <div className="min-h-[calc(100vh-4rem)] flex bg-background">
+      {/* Left Column - Hero Branding Banner */}
+      <div className="hidden md:flex flex-1 bg-gradient-to-br from-lime-400/15 via-background to-background p-12 flex-col justify-between relative overflow-hidden border-r border-border/50">
+        <div className="absolute inset-0 bg-grid-dots opacity-30 pointer-events-none" />
+        
+        <div className="relative z-10">
+          <Link href="/" className="flex items-center gap-2.5 w-fit">
+            <div className="h-9 w-9 rounded-xl bg-lime-400 flex items-center justify-center text-black font-bold text-lg glow-lime shadow-sm">
+              B
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loading}>
+            <span className="font-bold text-xl tracking-tight">BuddyAcross</span>
+          </Link>
+        </div>
+
+        <div className="relative z-10 max-w-md space-y-4 my-auto py-12">
+          <h2 className="text-4xl font-extrabold leading-tight tracking-tight">
+            A friend in <span className="text-lime-500 dark:text-lime-400">every city.</span>
+          </h2>
+          <p className="text-muted-foreground text-base leading-relaxed">
+            Verified local Buddies, secure payments, and authentic community reviews. Get everyday tasks done without the hassle.
+          </p>
+        </div>
+
+        <div className="relative z-10 text-xs text-muted-foreground font-medium">
+          © {new Date().getFullYear()} BuddyAcross Technologies Inc.
+        </div>
+      </div>
+
+      {/* Right Column - Login Form */}
+      <div className="flex-1 flex items-center justify-center p-6 sm:p-12 relative animate-fade-in">
+        <div className="w-full max-w-md space-y-6">
+          <div className="space-y-1.5 text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Welcome back</h1>
+            <p className="text-muted-foreground text-sm">Log in with your phone number or email to continue</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Role Selection Toggle */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Select your active view
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole("tasker")}
+                  className={`text-left rounded-xl border-2 p-3.5 transition-all btn-press ${
+                    role === "tasker"
+                      ? "border-lime-400 bg-lime-400/10 glow-lime shadow-xs"
+                      : "border-border hover:border-lime-400/40 bg-card/50"
+                  }`}
+                >
+                  <div className="font-semibold text-sm">Task Poster</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Hire for tasks</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole("buddy")}
+                  className={`text-left rounded-xl border-2 p-3.5 transition-all btn-press ${
+                    role === "buddy"
+                      ? "border-lime-400 bg-lime-400/10 glow-lime shadow-xs"
+                      : "border-border hover:border-lime-400/40 bg-card/50"
+                  }`}
+                >
+                  <div className="font-semibold text-sm">Buddy</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Earn money</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Form Fields */}
+            <div className="space-y-4 pt-1">
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="font-medium text-sm">
+                  Phone number or Email
+                </label>
+                <Input
+                  id="email"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="+91 98xxxxxxxx / name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-11 bg-background/60"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 rounded-xl bg-lime-400 hover:bg-lime-500 active:bg-lime-600 text-black font-semibold shadow-sm hover-glow-btn transition-all btn-press disabled:opacity-50 mt-2"
+            >
               {loading ? "Sending OTP..." : "Send OTP"}
-            </Button>
-            <div className="text-center text-sm text-muted-foreground">
+            </button>
+
+            <div className="text-center text-sm text-muted-foreground pt-2">
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline font-semibold">
+              <Link href="/register" className="text-lime-500 dark:text-lime-400 font-semibold hover:underline">
                 Register here
               </Link>
             </div>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

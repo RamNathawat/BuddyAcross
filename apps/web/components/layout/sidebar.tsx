@@ -63,9 +63,11 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="border-border flex h-16 items-center justify-between border-b px-6">
-          <Link href="/" className="text-xl font-bold">
-            <span className="text-primary">Buddy</span>
-            <span className="text-foreground">Across</span>
+          <Link href="/" className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-lime-400 flex items-center justify-center text-black font-bold glow-lime">
+              B
+            </div>
+            <span className="font-bold text-lg tracking-tight">BuddyAcross</span>
           </Link>
           <button
             onClick={onClose}
@@ -90,13 +92,13 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-primary/10 text-primary"
+                    ? "bg-lime-400/15 text-lime-600 dark:text-lime-400 border border-lime-400/30 font-semibold shadow-2xs"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
+                <item.icon className={cn("h-5 w-5", isActive && "text-lime-600 dark:text-lime-400")} />
                 {item.label}
               </Link>
             );

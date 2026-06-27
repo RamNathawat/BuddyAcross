@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { ShieldCheck, Check, X, RotateCcw, Eye, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -20,45 +20,32 @@ interface MockKycRecord {
   notes?: string;
 }
 
-const INITIAL_QUEUE: MockKycRecord[] = [
-  {
-    id: "sub_101",
-    buddyName: "Rahul Verma",
-    city: "Bengaluru (560001)",
-    skills: ["Cleaning", "Repairs"],
-    submittedAgo: "10 mins ago",
-    status: "pending",
-    aadhaarFront: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    aadhaarBack: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    selfie: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-  },
-  {
-    id: "sub_102",
-    buddyName: "Vikram Reddy",
-    city: "Bengaluru (560038)",
-    skills: ["Moving", "Delivery"],
-    submittedAgo: "25 mins ago",
-    status: "pending",
-    aadhaarFront: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    aadhaarBack: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    selfie: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-  },
-  {
-    id: "sub_103",
-    buddyName: "Amit Patel",
-    city: "Bengaluru (560010)",
-    skills: ["Furniture Assembly"],
-    submittedAgo: "1 hour ago",
-    status: "resubmission_requested",
-    notes: "Photo blurry",
-    aadhaarFront: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    aadhaarBack: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-    selfie: "https://res.cloudinary.com/demo/image/upload/sample.jpg",
-  },
-];
+const INITIAL_QUEUE: MockKycRecord[] = [];
 
 export default function AdminDashboardPage() {
   const [queue, setQueue] = useState<MockKycRecord[]>(INITIAL_QUEUE);
+  const [selectedDocs, setSelectedDocs] = useState<MockKycRecord | null>(null);
+  const [filterTab, setFilterTab] = useState<"pending" | "reviewed" | "all">("pending");
+
+  const filteredQueue = queue.filter((item) => {
+    if (filterTab === "pending") return item.status === "pending";
+    if (filterTab === "reviewed") return item.status !== "pending";
+    return true;
+  });
+
+  useEffect(() => {
+    try {
+      const liveSub = localStorage.getItem("buddy_live_kyc_submission");
+      if (liveSub) {
+        const parsed = JSON.parse(liveSub);
+        setQueue((prev) => {
+          const exists = prev.some((item) => item.id === parsed.id);
+          if (exists) return prev.map((item) => (item.id === parsed.id ? parsed : item));
+          return [parsed, ...prev];
+        });
+      }
+    } catch {}
+  }, []);
 
   const handleReview = (id: string, action: "approved" | "rejected" | "resubmission_requested") => {
     let reason = "";
@@ -70,101 +57,200 @@ export default function AdminDashboardPage() {
     setQueue((prev) =>
       prev.map((item) => {
         if (item.id === id) {
-          return { ...item, status: action, notes: reason };
+          const updated = { ...item, status: action, notes: reason };
+          try {
+            const liveSub = localStorage.getItem("buddy_live_kyc_submission");
+            if (liveSub && JSON.parse(liveSub).id === id) {
+              localStorage.setItem("buddy_live_kyc_submission", JSON.stringify(updated));
+            }
+          } catch {}
+          return updated;
         }
         return item;
       })
     );
 
-    // Also update buddy localStorage if Rahul Verma (for demo interactive testing across tabs)
-    if (id === "sub_101") {
-      localStorage.setItem("buddy_kyc_status", action);
-      if (reason) localStorage.setItem("buddy_kyc_rejection_reason", reason);
-    }
+    // Update buddy localStorage status so the logged in user sees immediate live approval across tabs
+    localStorage.setItem("buddy_kyc_status", action);
+    if (reason) localStorage.setItem("buddy_kyc_rejection_reason", reason);
 
     toast.success(`KYC request #${id} marked as ${action.toUpperCase().replace("_", " ")}`);
+    if (selectedDocs?.id === id) setSelectedDocs(null);
   };
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-card border shadow-xs">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">KYC Review &amp; Approval Queue</h1>
-          <p className="text-sm text-muted-foreground mt-1">Review government IDs and selfies submitted by local Buddies.</p>
+    <div className="space-y-6 animate-fade-in max-w-7xl mx-auto relative">
+      {/* Document Inspector Modal */}
+      {selectedDocs && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+          <div className="bg-card border rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <FileText className="size-5 text-primary" /> KYC Documents: {selectedDocs.buddyName}
+                </h3>
+                <p className="text-sm text-muted-foreground">ID: #{selectedDocs.id} • Submitted: {selectedDocs.submittedAgo}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedDocs(null)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2 border rounded-xl p-3 bg-secondary/10">
+                <p className="font-semibold text-sm text-center">1. Aadhaar Card (Front)</p>
+                <div className="aspect-video bg-black/5 rounded-lg overflow-hidden border flex items-center justify-center">
+                  <img src={selectedDocs.aadhaarFront} alt="Aadhaar Front" className="w-full h-full object-contain" />
+                </div>
+              </div>
+
+              <div className="space-y-2 border rounded-xl p-3 bg-secondary/10">
+                <p className="font-semibold text-sm text-center">2. Aadhaar Card (Back)</p>
+                <div className="aspect-video bg-black/5 rounded-lg overflow-hidden border flex items-center justify-center">
+                  <img src={selectedDocs.aadhaarBack} alt="Aadhaar Back" className="w-full h-full object-contain" />
+                </div>
+              </div>
+
+              <div className="space-y-2 border rounded-xl p-3 bg-secondary/10">
+                <p className="font-semibold text-sm text-center">3. Live Selfie</p>
+                <div className="aspect-video bg-black/5 rounded-lg overflow-hidden border flex items-center justify-center">
+                  <img src={selectedDocs.selfie} alt="Selfie" className="w-full h-full object-contain" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+              <Button variant="outline" onClick={() => setSelectedDocs(null)}>Close Inspector</Button>
+              {selectedDocs.status !== "approved" && (
+                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleReview(selectedDocs.id, "approved")}>
+                  <Check className="size-4 mr-1.5" /> Approve KYC
+                </Button>
+              )}
+              {selectedDocs.status !== "rejected" && (
+                <Button variant="destructive" onClick={() => handleReview(selectedDocs.id, "rejected")}>
+                  <X className="size-4 mr-1.5" /> Reject KYC
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
-        <Badge variant="secondary" className="px-3 py-1.5 text-xs">
-          Queue Size: {queue.filter((q) => q.status === "pending").length} Pending
-        </Badge>
+      )}
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 rounded-2xl bg-card border shadow-xs">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-extrabold tracking-tight">Trust & Safety Audit Queue</h1>
+          <p className="text-muted-foreground text-sm">
+            Review government Aadhaar verification documents submitted by local Buddies.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium bg-secondary/30">
+            <ShieldCheck className="size-4 mr-1.5 text-primary" />
+            24/7 Monitoring Active
+          </Badge>
+        </div>
       </div>
 
-      <Card className="shadow-sm overflow-hidden">
-        <CardHeader className="bg-secondary/20 pb-4">
-          <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <FileText className="size-4 text-primary" /> Submissions Awaiting Audit
-          </CardTitle>
-          <CardDescription>Click View Documents to inspect Cloudinary encrypted images.</CardDescription>
+      <Card className="border shadow-xs overflow-hidden">
+        <CardHeader className="bg-secondary/20 pb-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">KYC Review & Approval Queue</CardTitle>
+              <CardDescription>Review government IDs and selfies submitted by local Buddies.</CardDescription>
+            </div>
+            <Badge variant="secondary" className="font-mono text-xs">Pending Review: {queue.filter(q => q.status === "pending").length}</Badge>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <Button variant={filterTab === "pending" ? "default" : "outline"} size="sm" onClick={() => setFilterTab("pending")}>
+              Pending Review ({queue.filter(q => q.status === "pending").length})
+            </Button>
+            <Button variant={filterTab === "reviewed" ? "default" : "outline"} size="sm" onClick={() => setFilterTab("reviewed")}>
+              Reviewed / Actioned ({queue.filter(q => q.status !== "pending").length})
+            </Button>
+            <Button variant={filterTab === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterTab("all")}>
+              All Records ({queue.length})
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
+          <div className="p-4 bg-blue-500/10 border-b flex items-center gap-3 text-blue-800 dark:text-blue-300 text-sm">
+            <FileText className="size-4 shrink-0" />
+            <span>Click <strong>Docs</strong> to launch interactive document inspector for Cloudinary encrypted images.</span>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b bg-secondary/10 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  <th className="p-4 pl-6">Buddy Details</th>
-                  <th className="p-4">Service Area</th>
-                  <th className="p-4">Skills</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 text-right pr-6">Audit Actions</th>
+                <tr className="border-b bg-secondary/10 text-xs text-muted-foreground font-medium">
+                  <th className="p-4 pl-6">BUDDY DETAILS</th>
+                  <th className="p-4">SERVICE AREA</th>
+                  <th className="p-4">SKILLS</th>
+                  <th className="p-4">STATUS</th>
+                  <th className="p-4 text-right pr-6">AUDIT ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y text-sm">
-                {queue.map((item) => (
-                  <tr key={item.id} className="hover:bg-secondary/10 transition-colors">
-                    <td className="p-4 pl-6">
-                      <div className="font-bold">{item.buddyName}</div>
-                      <div className="text-xs text-muted-foreground">{item.submittedAgo}</div>
-                    </td>
-                    <td className="p-4 font-medium">{item.city}</td>
-                    <td className="p-4">
-                      <div className="flex flex-wrap gap-1">
-                        {item.skills.map((s) => (
-                          <Badge key={s} variant="outline" className="text-xs font-normal">
-                            {s}
-                          </Badge>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      {item.status === "pending" && <Badge variant="warning">Pending</Badge>}
-                      {item.status === "approved" && <Badge variant="success">Approved</Badge>}
-                      {item.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
-                      {item.status === "resubmission_requested" && <Badge variant="destructive">Resubmit</Badge>}
-                      {item.notes && <p className="text-xs text-destructive mt-1">Note: {item.notes}</p>}
-                    </td>
-                    <td className="p-4 text-right pr-6 space-x-2 whitespace-nowrap">
-                      <Button variant="outline" size="sm" onClick={() => window.open(item.aadhaarFront, "_blank")}>
-                        <Eye className="size-3.5 mr-1" /> Docs
-                      </Button>
-                      
-                      {item.status !== "approved" && (
-                        <Button className="bg-green-600 hover:bg-green-700 text-white" size="sm" onClick={() => handleReview(item.id, "approved")}>
-                          <Check className="size-3.5 mr-1" /> Approve
-                        </Button>
-                      )}
-
-                      {item.status !== "rejected" && (
-                        <Button variant="destructive" size="sm" onClick={() => handleReview(item.id, "rejected")}>
-                          <X className="size-3.5 mr-1" /> Reject
-                        </Button>
-                      )}
-
-                      {item.status !== "resubmission_requested" && (
-                        <Button variant="secondary" size="sm" onClick={() => handleReview(item.id, "resubmission_requested")}>
-                          <RotateCcw className="size-3.5 mr-1" /> Resubmit
-                        </Button>
-                      )}
+                {filteredQueue.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center text-muted-foreground">
+                      <ShieldCheck className="size-10 mx-auto mb-3 text-primary/40" />
+                      <p className="font-semibold text-base text-foreground">
+                        {filterTab === "pending" ? "All caught up! No pending KYC requests." : "No KYC records found in this view."}
+                      </p>
+                      <p className="text-xs mt-1">When submissions arrive or get reviewed, they will appear here live.</p>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredQueue.map((item) => (
+                    <tr key={item.id} className="hover:bg-secondary/10 transition-colors">
+                      <td className="p-4 pl-6 font-medium">
+                        <div className="font-bold text-foreground">{item.buddyName}</div>
+                        <div className="text-xs text-muted-foreground">{item.submittedAgo}</div>
+                      </td>
+                      <td className="p-4 text-muted-foreground">{item.city}</td>
+                      <td className="p-4">
+                        <div className="flex flex-wrap gap-1">
+                          {item.skills.map((s, idx) => (
+                            <Badge key={idx} variant="secondary" className="text-[10px] px-2 py-0 font-normal">
+                              {s}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        {item.status === "pending" && <Badge variant="warning">Pending</Badge>}
+                        {item.status === "approved" && <Badge variant="success">Approved</Badge>}
+                        {item.status === "rejected" && <Badge variant="destructive">Rejected</Badge>}
+                        {item.status === "resubmission_requested" && <Badge variant="destructive">Resubmit</Badge>}
+                        {item.notes && <p className="text-xs text-destructive mt-1">Note: {item.notes}</p>}
+                      </td>
+                      <td className="p-4 text-right pr-6 space-x-2 whitespace-nowrap">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedDocs(item)}>
+                          <Eye className="size-3.5 mr-1" /> Docs
+                        </Button>
+                        
+                        {item.status !== "approved" && (
+                          <Button className="bg-green-600 hover:bg-green-700 text-white" size="sm" onClick={() => handleReview(item.id, "approved")}>
+                            <Check className="size-3.5 mr-1" /> Approve
+                          </Button>
+                        )}
+
+                        {item.status !== "rejected" && (
+                          <Button variant="destructive" size="sm" onClick={() => handleReview(item.id, "rejected")}>
+                            <X className="size-3.5 mr-1" /> Reject
+                          </Button>
+                        )}
+
+                        {item.status !== "resubmission_requested" && (
+                          <Button variant="secondary" size="sm" onClick={() => handleReview(item.id, "resubmission_requested")}>
+                            <RotateCcw className="size-3.5 mr-1" /> Resubmit
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

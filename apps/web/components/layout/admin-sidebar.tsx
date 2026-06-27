@@ -16,12 +16,12 @@ import { cn } from "@/lib/utils";
 
 const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
-  { label: "KYC Queue", href: "/admin/kyc", icon: FileCheck },
-  { label: "Users", href: "/admin/users", icon: Users },
-  { label: "Tasks", href: "/admin/tasks", icon: ListTodo },
-  { label: "Escrow", href: "/admin/escrow", icon: Wallet },
-  { label: "Reviews", href: "/admin/reviews", icon: Star },
-  { label: "Strikes", href: "/admin/strikes", icon: Shield },
+  { label: "KYC Queue", href: "/admin", icon: FileCheck },
+  { label: "Users", href: "/admin", icon: Users },
+  { label: "Tasks", href: "/admin", icon: ListTodo },
+  { label: "Escrow", href: "/admin", icon: Wallet },
+  { label: "Reviews", href: "/admin", icon: Star },
+  { label: "Strikes", href: "/admin", icon: Shield },
 ];
 
 interface AdminSidebarProps {
