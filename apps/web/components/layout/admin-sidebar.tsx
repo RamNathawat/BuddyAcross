@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -11,8 +11,10 @@ import {
   Star,
   Shield,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { performLogout } from "@/lib/auth/logout";
 
 const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
@@ -31,6 +33,7 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <>
@@ -85,8 +88,15 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
           })}
         </nav>
 
-        <div className="border-border border-t p-4">
-          <div className="bg-warning/10 text-warning rounded-lg px-3 py-2 text-xs font-medium">
+        <div className="border-border border-t p-4 space-y-3">
+          <button
+            onClick={() => performLogout(router)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+          <div className="bg-warning/10 text-warning rounded-lg px-3 py-2 text-xs font-medium text-center">
             Admin Panel
           </div>
         </div>

@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Clock, RefreshCw, LogOut, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { performLogout } from "@/lib/auth/logout";
 
 export default function PendingApprovalPage() {
   const [status, setStatus] = useState("pending");
@@ -88,9 +88,7 @@ export default function PendingApprovalPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("buddy_auth_token");
-    localStorage.removeItem("buddy_user_role");
-    router.push("/login");
+    performLogout(router);
   };
 
   if (status === "rejected" || status === "resubmission_requested") {

@@ -18,7 +18,7 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet: { name: string; value: string; options?: any }[]) {
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -46,7 +46,6 @@ export async function updateSession(request: NextRequest) {
   const isPublicPath = publicPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith("/buddy/") ||
       request.nextUrl.pathname.startsWith("/onboarding") ||
       request.nextUrl.pathname.startsWith("/verify")
   );

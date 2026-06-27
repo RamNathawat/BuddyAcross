@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { AdminSidebar, Topbar } from "@/components/layout";
+import { useAuthSync } from "@/lib/auth/logout";
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  useAuthSync();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (

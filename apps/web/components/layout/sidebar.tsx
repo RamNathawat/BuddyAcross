@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   ListTodo,
@@ -10,8 +10,10 @@ import {
   Search,
   Gavel,
   X,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { performLogout } from "@/lib/auth/logout";
 
 interface NavItem {
   label: string;
@@ -42,6 +44,7 @@ interface SidebarProps {
 
 export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const navItems = role === "tasker" ? taskerNav : buddyNav;
 
   return (
@@ -106,8 +109,15 @@ export function Sidebar({ role, isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="border-border border-t p-4">
-          <p className="text-muted-foreground text-xs">
+        <div className="border-border border-t p-4 space-y-3">
+          <button
+            onClick={() => performLogout(router)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          >
+            <LogOut className="h-5 w-5" />
+            Log out
+          </button>
+          <p className="text-muted-foreground text-xs px-3">
             © {new Date().getFullYear()} BuddyAcross
           </p>
         </div>

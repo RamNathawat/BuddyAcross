@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar, Topbar, MobileNav } from "@/components/layout";
+import { useAuthSync } from "@/lib/auth/logout";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  useAuthSync();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
