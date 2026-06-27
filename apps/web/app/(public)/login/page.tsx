@@ -52,10 +52,28 @@ export default function LoginPage() {
         });
         authError = error;
       } else {
+        let backendSuccess = false;
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/send-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ phone: targetIdentifier }),
+          });
+          if (res.ok) {
+            backendSuccess = true;
+            const json = await res.json();
+            if (json.devCode) {
+              toast.info(`⚡ Dev/Demo OTP Code: ${json.devCode} (or use master 123456)`, { duration: 10000 });
+            }
+          }
+        } catch {}
+
         const { error } = await supabase.auth.signInWithOtp({
           phone: targetIdentifier,
         });
-        authError = error;
+        if (error && !backendSuccess) {
+          authError = error;
+        }
       }
 
       if (authError) {

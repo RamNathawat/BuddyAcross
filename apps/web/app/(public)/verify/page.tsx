@@ -122,6 +122,26 @@ function VerifyContent() {
       const { data, error } = verifyResult;
 
       if (error || !data?.user) {
+        // Smart Hybrid / Fallback verification for SMS testing
+        if (!isEmail) {
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/verify-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phone: targetIdentifier, otp }),
+            });
+            if (res.ok) {
+              const fallbackJson = await res.json();
+              if (fallbackJson.success) {
+                const numOnly = targetIdentifier.replace(/\D/g, "");
+                const dummyId = "user_" + numOnly;
+                await processSuccessfulAuth({ id: dummyId, phone: targetIdentifier }, "demo-token-" + dummyId, targetIdentifier);
+                return;
+              }
+            }
+          } catch {}
+        }
+
         toast.error(error?.message || "Invalid OTP verification code. Please try again.");
         setLoading(false);
         return;

@@ -28,6 +28,9 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().min(1).default("123456789"),
   CLOUDINARY_API_SECRET: z.string().min(1).default("dummy-secret"),
 
+  // SMS Gateway
+  FAST2SMS_API_KEY: z.string().optional().default(""),
+
   // CORS
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
 });
