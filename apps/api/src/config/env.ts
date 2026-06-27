@@ -17,8 +17,8 @@ const envSchema = z.object({
 
   // Supabase
   SUPABASE_URL: z.string().url().default("https://vbesyjbxclatvsqypnmc.supabase.co"),
-  SUPABASE_ANON_KEY: z.string().min(1).default("dummy_anon_key"),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).default("dummy_service_role_key"),
+  SUPABASE_ANON_KEY: z.string().min(1).default("sb_publishable_ObScrj8Oz5kFVAF8lxd7eg_hTbmermj"),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).default("sb_secret_SMwlvBT2qEGmqjgO1BQq7Q_B3QXTTte"),
 
   // Database
   DATABASE_URL: z.string().min(1).default("postgresql://postgres.vbesyjbxclatvsqypnmc:HZfj3z943pQqLJ6N@aws-1-ap-northeast-2.pooler.supabase.com:6543/postgres"),
