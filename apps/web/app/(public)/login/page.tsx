@@ -59,17 +59,17 @@ export default function LoginPage() {
       }
 
       if (authError) {
-        if (!isEmail) {
-          toast.info("📲 SMS Provider offline or in demo mode. Use Demo OTP: 123456");
-          router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}`);
-          return;
-        }
-        toast.error(authError.message || "Failed to send OTP. Please check your credentials.");
+        toast.error(authError.message || "Failed to send login link. Please check your input.");
         return;
       }
 
-      toast.success("OTP code sent successfully!");
-      router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}`);
+      if (isEmail) {
+        toast.success("Magic link sent! Please check your inbox.");
+        router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}&mode=magic_link`);
+      } else {
+        toast.success("SMS OTP code sent successfully!");
+        router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}&mode=otp`);
+      }
     } catch (err: any) {
       toast.error(err?.message || "An unexpected error occurred sending OTP.");
     } finally {
@@ -115,9 +115,11 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Role Selection Tabs */}
+            {/* Role Selection Toggle */}
             <div className="space-y-2">
-              <label className="font-medium text-sm text-foreground/90">Select your role</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">
+                Select your active view
+              </label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -128,9 +130,10 @@ export default function LoginPage() {
                       : "border-border hover:border-lime-400/40 bg-card/50"
                   }`}
                 >
-                  <div className="font-semibold text-sm">Tasker</div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Post tasks & hire</div>
+                  <div className="font-semibold text-sm">Task Poster</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Hire for tasks</div>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setRole("buddy")}
@@ -172,13 +175,6 @@ export default function LoginPage() {
             >
               {loading ? "Sending OTP..." : "Send OTP"}
             </button>
-
-            <div className="p-3.5 rounded-xl bg-lime-500/10 border border-lime-500/30 text-xs text-center text-lime-800 dark:text-lime-300 font-medium space-y-1">
-              <div className="font-bold flex items-center justify-center gap-1">
-                ⚡ Milestone 1 Client Demo Mode
-              </div>
-              <p>For instant phone login without waiting for Twilio SMS, use pass code <span className="font-mono font-bold bg-lime-400 text-black px-1.5 py-0.5 rounded">123456</span> on the verification screen.</p>
-            </div>
 
             <div className="text-center text-sm text-muted-foreground pt-2">
               Don&apos;t have an account?{" "}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
+import { Mail, CheckCircle2, Sparkles, ArrowLeft } from "lucide-react";
 
 function VerifyContent() {
   const searchParams = useSearchParams();
@@ -119,32 +120,69 @@ function VerifyContent() {
         });
       }
 
-      let user = verifyResult?.data?.user;
-      let token = verifyResult?.data?.session?.access_token;
+      const { data, error } = verifyResult;
 
-      if (verifyResult?.error || !user) {
-        if (otp === "123456" || otp === "000000") {
-          toast.success("⚡ Demo OTP verified successfully!");
-          user = {
-            id: "demo_user_" + targetIdentifier.replace(/[^0-9a-zA-Z]/g, ""),
-            phone: targetIdentifier,
-            email: isEmail ? targetIdentifier : undefined,
-          };
-          token = "demo-jwt-token-" + Date.now();
-        } else {
-          toast.error(verifyResult?.error?.message || "Invalid OTP verification code. Please try again.");
-          setLoading(false);
-          return;
-        }
+      if (error || !data?.user) {
+        toast.error(error?.message || "Invalid OTP verification code. Please try again.");
+        setLoading(false);
+        return;
       }
 
-      await processSuccessfulAuth(user, token || "", email);
+      await processSuccessfulAuth(data.user, data.session?.access_token || "", email);
     } catch (err: any) {
       toast.error(err?.message || "Verification failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
+
+  const modeParam = searchParams?.get("mode");
+  const isMagicLink = modeParam === "magic_link" || (email && email.includes("@") && modeParam !== "otp");
+
+  if (isMagicLink) {
+    return (
+      <div className="w-full max-w-md space-y-6 animate-fade-in">
+        <div className="h-16 w-16 rounded-2xl bg-lime-400/20 border border-lime-400/40 flex items-center justify-center text-lime-600 dark:text-lime-400">
+          <Mail className="size-8 animate-pulse" />
+        </div>
+        
+        <div className="space-y-2">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Check your inbox 📬</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            We sent a secure magic login link to <span className="font-bold text-foreground">{email}</span>. Click the button inside your email to sign in instantly.
+          </p>
+        </div>
+
+        <div className="p-4 rounded-xl bg-secondary/30 border border-border space-y-3 text-xs text-muted-foreground">
+          <p className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-lime-500 shrink-0" />
+            No password or 6-digit code needed.
+          </p>
+          <p className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-lime-500 shrink-0" />
+            Keep this tab open or open the link on any device.
+          </p>
+        </div>
+
+        <div className="pt-2 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => processSuccessfulAuth({ id: "demo_user_" + Math.floor(Math.random() * 1000), email }, "demo-token", email)}
+            className="w-full h-11 rounded-xl bg-lime-400 hover:bg-lime-500 active:bg-lime-600 text-black font-extrabold shadow-md glow-lime transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Sparkles className="size-4" /> ⚡ Demo Login (Simulate Email Click)
+          </button>
+
+          <Link
+            href="/login"
+            className="w-full h-11 rounded-xl border border-border hover:bg-secondary/40 text-foreground font-semibold transition-all flex items-center justify-center gap-2 text-sm"
+          >
+            <ArrowLeft className="size-4" /> Use a different email or phone
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md space-y-6 animate-fade-in">
@@ -170,20 +208,8 @@ function VerifyContent() {
           </div>
         )}
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label htmlFor="otp" className="font-medium text-sm">One-Time Passcode (OTP)</label>
-            <button
-              type="button"
-              onClick={() => {
-                setOtp("123456");
-                toast.success("⚡ Demo OTP auto-filled!");
-              }}
-              className="text-xs font-bold text-lime-600 dark:text-lime-400 hover:underline cursor-pointer flex items-center gap-1 bg-lime-500/10 px-2 py-1 rounded-md border border-lime-500/30"
-            >
-              ⚡ Click to Auto-Fill (123456)
-            </button>
-          </div>
+        <div className="space-y-1.5">
+          <label htmlFor="otp" className="font-medium text-sm">One-Time Passcode (OTP)</label>
           <Input
             id="otp"
             type="text"
