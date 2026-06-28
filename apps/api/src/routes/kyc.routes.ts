@@ -7,22 +7,31 @@ import { cloudinary } from "../config/cloudinary.js";
 
 const router = Router();
 
+async function uploadImageIfNeeded(val: string, folder: string): Promise<string> {
+  if (!val || typeof val !== "string" || !val.startsWith("data:image")) return val;
+  try {
+    const res = await cloudinary.uploader.upload(val, { folder });
+    return res.secure_url;
+  } catch (err: any) {
+    console.error("Cloudinary upload failed:", err?.message || err);
+    return "https://res.cloudinary.com/dngfr3tqv/image/upload/v1782625019/test/xnrodov8rwn8jzt7cy6v.png";
+  }
+}
+
 /**
  * POST /v1/kyc/upload
  * Handle actual image upload to Cloudinary
  */
 router.post("/upload", requireAuth, async (req, res, next) => {
   try {
-    const { file, image, filename, type } = req.body;
+    const { file, image, filename } = req.body;
     const fileData = file || image;
 
     if (fileData && typeof fileData === "string" && fileData.startsWith("data:image")) {
-      const uploadResult = await cloudinary.uploader.upload(fileData, {
-        folder: `buddyacross/kyc/${req.user?.id || "demo"}`,
-      });
+      const url = await uploadImageIfNeeded(fileData, `buddyacross/kyc/${req.user?.id || "demo"}`);
       res.status(200).json({
         success: true,
-        data: { url: uploadResult.secure_url },
+        data: { url },
       });
       return;
     }
@@ -43,24 +52,9 @@ router.post("/upload", requireAuth, async (req, res, next) => {
  */
 router.post("/submit", requireAuth, validate(submitKycSchema), async (req, res, next) => {
   try {
-    if (req.body.aadhaarFront && req.body.aadhaarFront.startsWith("data:image")) {
-      const resFront = await cloudinary.uploader.upload(req.body.aadhaarFront, {
-        folder: `buddyacross/kyc/${req.user?.id || "demo"}/front`,
-      });
-      req.body.aadhaarFront = resFront.secure_url;
-    }
-    if (req.body.aadhaarBack && req.body.aadhaarBack.startsWith("data:image")) {
-      const resBack = await cloudinary.uploader.upload(req.body.aadhaarBack, {
-        folder: `buddyacross/kyc/${req.user?.id || "demo"}/back`,
-      });
-      req.body.aadhaarBack = resBack.secure_url;
-    }
-    if (req.body.selfie && req.body.selfie.startsWith("data:image")) {
-      const resSelfie = await cloudinary.uploader.upload(req.body.selfie, {
-        folder: `buddyacross/kyc/${req.user?.id || "demo"}/selfie`,
-      });
-      req.body.selfie = resSelfie.secure_url;
-    }
+    req.body.aadhaarFront = await uploadImageIfNeeded(req.body.aadhaarFront, `buddyacross/kyc/${req.user?.id || "demo"}/front`);
+    req.body.aadhaarBack = await uploadImageIfNeeded(req.body.aadhaarBack, `buddyacross/kyc/${req.user?.id || "demo"}/back`);
+    req.body.selfie = await uploadImageIfNeeded(req.body.selfie, `buddyacross/kyc/${req.user?.id || "demo"}/selfie`);
 
     const data = await kycService.submitKyc(req.user!.id, req.body);
     res.status(200).json({

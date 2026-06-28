@@ -203,8 +203,8 @@ export default function BuddyKycUploadPage() {
     setEmergencyName("Anand Sharma (Father)");
     setEmergencyPhone("+91 98440 11223");
     
-    // Generate dummy image dataurls if empty so validation passes
-    const dummyImg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><rect width='100%' height='100%' fill='%2384cc16'/><text x='50%' y='50%' font-size='14' text-anchor='middle' fill='black' dy='.3em'>Verified</text></svg>";
+    // Generate dummy image URLs if empty so validation passes
+    const dummyImg = "https://res.cloudinary.com/dngfr3tqv/image/upload/v1782625019/test/xnrodov8rwn8jzt7cy6v.png";
     if (!frontUrl) setFrontUrl(dummyImg);
     if (!backUrl) setBackUrl(dummyImg);
     if (!selfieUrl) setSelfieUrl(dummyImg);

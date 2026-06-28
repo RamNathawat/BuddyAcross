@@ -15,29 +15,72 @@ export default function PendingApprovalPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  useEffect(() => {
-    const checkCurrentStatus = async () => {
-      let userId = localStorage.getItem("buddy_user_id");
-      if (!userId) {
-        const { data: authData } = await supabase.auth.getUser();
-        if (authData?.user?.id) {
-          userId = authData.user.id;
-          localStorage.setItem("buddy_user_id", userId);
-        }
+  /**
+   * Resolves the buddy user ID. Prefers the stored ID (the user who submitted KYC)
+   * over the active Supabase session, which may belong to a different user (e.g. admin)
+   * if they logged in on another tab in the same browser.
+   */
+  const resolveBuddyUserId = async (): Promise<string | null> => {
+    const storedId = localStorage.getItem("buddy_user_id");
+    if (storedId) return storedId;
+
+    // Fallback: if no stored ID, try the active session
+    const { data: authData } = await supabase.auth.getUser();
+    if (authData?.user?.id) {
+      localStorage.setItem("buddy_user_id", authData.user.id);
+      return authData.user.id;
+    }
+    return null;
+  };
+
+  /**
+   * Fetches the live KYC status from the database for the given user ID.
+   * Returns the status string or null if not found.
+   */
+  const fetchKycStatus = async (userId: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase
+        .from("buddy_profiles")
+        .select("id, kyc_status")
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        console.warn("buddy_profiles query error:", error.message);
       }
 
+      if (data?.kyc_status) {
+        return data.kyc_status;
+      }
+
+      // Fallback: check kyc_submissions directly
+      if (data?.id) {
+        const { data: kycRow, error: kycError } = await supabase
+          .from("kyc_submissions")
+          .select("status")
+          .eq("buddy_id", data.id)
+          .single();
+
+        if (kycError) {
+          console.warn("kyc_submissions query error:", kycError.message);
+        }
+        return kycRow?.status || null;
+      }
+    } catch (err) {
+      console.error("fetchKycStatus unexpected error:", err);
+    }
+    return null;
+  };
+
+  useEffect(() => {
+    const checkCurrentStatus = async () => {
+      const userId = await resolveBuddyUserId();
+
       if (userId) {
-        try {
-          const { data } = await supabase.from("buddy_profiles").select("id, kyc_status").eq("user_id", userId).single();
-          if (data?.kyc_status) {
-            localStorage.setItem("buddy_kyc_status", data.kyc_status);
-          } else if (data?.id) {
-            const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("buddy_id", data.id).single();
-            if (kycRow?.status) {
-              localStorage.setItem("buddy_kyc_status", kycRow.status);
-            }
-          }
-        } catch {}
+        const liveStatus = await fetchKycStatus(userId);
+        if (liveStatus) {
+          localStorage.setItem("buddy_kyc_status", liveStatus);
+        }
       }
 
       const savedStatus = localStorage.getItem("buddy_kyc_status") || "pending";
@@ -58,27 +101,13 @@ export default function PendingApprovalPage() {
 
   const handleCheckStatus = async () => {
     toast.info("Checking latest status...");
-    let userId = localStorage.getItem("buddy_user_id");
-    if (!userId) {
-      const { data: authData } = await supabase.auth.getUser();
-      if (authData?.user?.id) {
-        userId = authData.user.id;
-        localStorage.setItem("buddy_user_id", userId);
-      }
-    }
+    const userId = await resolveBuddyUserId();
 
     if (userId) {
-      try {
-        const { data } = await supabase.from("buddy_profiles").select("id, kyc_status").eq("user_id", userId).single();
-        if (data?.kyc_status) {
-          localStorage.setItem("buddy_kyc_status", data.kyc_status);
-        } else if (data?.id) {
-          const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("buddy_id", data.id).single();
-          if (kycRow?.status) {
-            localStorage.setItem("buddy_kyc_status", kycRow.status);
-          }
-        }
-      } catch {}
+      const liveStatus = await fetchKycStatus(userId);
+      if (liveStatus) {
+        localStorage.setItem("buddy_kyc_status", liveStatus);
+      }
     }
 
     const current = localStorage.getItem("buddy_kyc_status") || "pending";
