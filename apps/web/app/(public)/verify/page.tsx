@@ -19,6 +19,12 @@ function VerifyContent() {
   const supabase = createClient();
 
   const processSuccessfulAuth = async (user: any, token: string, userEmail?: string) => {
+    const prevId = localStorage.getItem("buddy_user_id");
+    if (prevId && prevId !== user.id) {
+      localStorage.removeItem("buddy_user_role");
+      localStorage.removeItem("buddy_kyc_status");
+      localStorage.removeItem("buddy_user_name");
+    }
     localStorage.setItem("buddy_auth_token", token);
     localStorage.setItem("buddy_user_id", user.id);
     if (userEmail || user.email) localStorage.setItem("buddy_user_email", userEmail || user.email);
@@ -86,7 +92,7 @@ function VerifyContent() {
         }
       }
 
-      if (userRole === "buddy" && !kycStatus) {
+      if (userRole === "buddy") {
         const { data: profileRow } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", user.id).single();
         if (profileRow?.kyc_status) {
           kycStatus = profileRow.kyc_status;
