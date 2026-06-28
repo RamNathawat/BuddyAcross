@@ -12,7 +12,12 @@ export default function RoleSelectionPage() {
   const handleSelectRole = async (role: "tasker" | "buddy") => {
     localStorage.setItem("buddy_user_role", role);
     const token = localStorage.getItem("buddy_auth_token") || "demo-token";
-    const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+    let userId = localStorage.getItem("buddy_user_id") || "";
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+    if (!isUuid) {
+      userId = crypto.randomUUID();
+      localStorage.setItem("buddy_user_id", userId);
+    }
     const userEmail = localStorage.getItem("buddy_user_email") || `${userId}@example.com`;
     const fullName = localStorage.getItem("buddy_user_name") || userEmail.split("@")[0] || "User";
 

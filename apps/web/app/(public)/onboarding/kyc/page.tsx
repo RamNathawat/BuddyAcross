@@ -322,18 +322,52 @@ export default function BuddyKycUploadPage() {
     if (state) localStorage.setItem("buddy_profile_state", state);
     if (pincode) localStorage.setItem("buddy_profile_pincode", pincode);
 
-    const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+    let validUserId = localStorage.getItem("buddy_user_id") || "";
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validUserId);
+    if (!isUuid) {
+      validUserId = crypto.randomUUID();
+      localStorage.setItem("buddy_user_id", validUserId);
+    }
     // Store the KYC owner's ID separately so it survives session takeover by admin on another tab
-    localStorage.setItem("buddy_kyc_owner_id", userId);
+    localStorage.setItem("buddy_kyc_owner_id", validUserId);
 
     try {
-      await supabase.from("buddy_profiles").update({ kyc_status: "pending" }).eq("user_id", userId);
+      // 1. Ensure user exists in users table
+      const { data: existingUser } = await supabase.from("users").select("id").eq("id", validUserId).maybeSingle();
+      if (!existingUser) {
+        await supabase.from("users").upsert({
+          id: validUserId,
+          full_name: fullName || "Buddy User",
+          email: email || `${validUserId}@example.com`,
+          phone: phoneNumber || undefined,
+          role: "buddy",
+          is_active: true,
+        });
+      }
 
-      const { data: profileRow } = await supabase.from("buddy_profiles").select("id").eq("user_id", userId).maybeSingle();
-      if (profileRow?.id) {
-        await supabase.from("kyc_submissions").insert({
-          id: submissionId,
-          buddy_id: profileRow.id,
+      // 2. Ensure profile exists in buddy_profiles table
+      let buddyProfileId: string | null = null;
+      const { data: existingProfile } = await supabase.from("buddy_profiles").select("id").eq("user_id", validUserId).maybeSingle();
+      if (existingProfile?.id) {
+        buddyProfileId = existingProfile.id;
+        await supabase.from("buddy_profiles").update({ kyc_status: "pending" }).eq("id", buddyProfileId);
+      } else {
+        const { data: newProfile } = await supabase.from("buddy_profiles").insert({
+          user_id: validUserId,
+          city: city || "Bengaluru",
+          state: state || "Karnataka",
+          pincode: pincode || "560001",
+          skills: selectedSkills,
+          kyc_status: "pending",
+        }).select("id").maybeSingle();
+        if (newProfile?.id) buddyProfileId = newProfile.id;
+      }
+
+      // 3. Insert or update kyc_submissions table
+      if (buddyProfileId) {
+        const { data: existingSub } = await supabase.from("kyc_submissions").select("id").eq("buddy_id", buddyProfileId).maybeSingle();
+        const subData = {
+          buddy_id: buddyProfileId,
           aadhaar_front: finalFront || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
           aadhaar_back: finalBack || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
           selfie: finalSelfie || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
@@ -346,10 +380,20 @@ export default function BuddyKycUploadPage() {
           zones: selectedZones,
           status: "pending",
           submitted_ago: "Just now",
-        });
+          submitted_at: new Date().toISOString(),
+        };
+
+        if (existingSub?.id) {
+          await supabase.from("kyc_submissions").update(subData).eq("id", existingSub.id);
+        } else {
+          await supabase.from("kyc_submissions").insert({
+            id: submissionId,
+            ...subData,
+          });
+        }
       }
-    } catch {
-      // Fallback
+    } catch (err) {
+      console.error("Supabase direct saving error:", err);
     }
 
     toast.success("KYC Application submitted successfully!");
