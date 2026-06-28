@@ -16,18 +16,23 @@ export default function PendingApprovalPage() {
   const supabase = createClient();
 
   /**
-   * Resolves the buddy user ID. Prefers the stored ID (the user who submitted KYC)
-   * over the active Supabase session, which may belong to a different user (e.g. admin)
-   * if they logged in on another tab in the same browser.
+   * Resolves the buddy user ID who submitted KYC.
+   * Priority: buddy_kyc_owner_id (set during KYC submission, never overwritten by other logins)
+   *         > buddy_user_id (can be overwritten if admin logs in on same browser)
+   *         > active Supabase session (last resort)
    */
   const resolveBuddyUserId = async (): Promise<string | null> => {
+    // Primary: the dedicated KYC owner ID, immune to session takeover
+    const ownerId = localStorage.getItem("buddy_kyc_owner_id");
+    if (ownerId) return ownerId;
+
+    // Secondary: generic user ID (may have been overwritten by admin login)
     const storedId = localStorage.getItem("buddy_user_id");
     if (storedId) return storedId;
 
-    // Fallback: if no stored ID, try the active session
+    // Last resort: active session
     const { data: authData } = await supabase.auth.getUser();
     if (authData?.user?.id) {
-      localStorage.setItem("buddy_user_id", authData.user.id);
       return authData.user.id;
     }
     return null;
@@ -43,10 +48,11 @@ export default function PendingApprovalPage() {
         .from("buddy_profiles")
         .select("id, kyc_status")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.warn("buddy_profiles query error:", error.message);
+        return null;
       }
 
       if (data?.kyc_status) {
@@ -59,7 +65,7 @@ export default function PendingApprovalPage() {
           .from("kyc_submissions")
           .select("status")
           .eq("buddy_id", data.id)
-          .single();
+          .maybeSingle();
 
         if (kycError) {
           console.warn("kyc_submissions query error:", kycError.message);

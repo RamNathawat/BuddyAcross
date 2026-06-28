@@ -323,6 +323,8 @@ export default function BuddyKycUploadPage() {
     if (pincode) localStorage.setItem("buddy_profile_pincode", pincode);
 
     const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
+    // Store the KYC owner's ID separately so it survives session takeover by admin on another tab
+    localStorage.setItem("buddy_kyc_owner_id", userId);
 
     try {
       await supabase.from("buddy_profiles").update({ kyc_status: "pending" }).eq("user_id", userId);
