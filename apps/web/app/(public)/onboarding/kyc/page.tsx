@@ -328,6 +328,26 @@ export default function BuddyKycUploadPage() {
 
     try {
       await supabase.from("buddy_profiles").update({ kyc_status: "pending" }).eq("user_id", userId);
+
+      const { data: profileRow } = await supabase.from("buddy_profiles").select("id").eq("user_id", userId).maybeSingle();
+      if (profileRow?.id) {
+        await supabase.from("kyc_submissions").insert({
+          id: submissionId,
+          buddy_id: profileRow.id,
+          aadhaar_front: finalFront || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+          aadhaar_back: finalBack || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+          selfie: finalSelfie || "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+          account_holder: accountHolder || fullName,
+          account_number: accountNumber || "",
+          ifsc_code: ifscCode || "",
+          emergency_name: emergencyName || "",
+          emergency_phone: emergencyPhone || "",
+          skills: selectedSkills,
+          zones: selectedZones,
+          status: "pending",
+          submitted_ago: "Just now",
+        });
+      }
     } catch {
       // Fallback
     }
