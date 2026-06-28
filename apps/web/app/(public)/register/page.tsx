@@ -67,11 +67,12 @@ export default function RegisterPage() {
       };
 
       if (isEmail) {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
         const { error } = await supabase.auth.signInWithOtp({
           email: targetIdentifier,
           options: {
             data: metadataPayload,
-            emailRedirectTo: `${window.location.origin}/verify?email=${encodeURIComponent(targetIdentifier)}`,
+            emailRedirectTo: `${baseUrl}/verify?email=${encodeURIComponent(targetIdentifier)}`,
           },
         });
         authError = error;
