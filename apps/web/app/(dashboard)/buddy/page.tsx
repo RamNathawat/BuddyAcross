@@ -45,14 +45,16 @@ export default function BuddyDashboardPage() {
         if (savedName) setUserName(savedName);
       }
 
-      const kycStatus = localStorage.getItem("buddy_kyc_status") || "unverified";
-      const role = localStorage.getItem("buddy_user_role") || "buddy";
+      const { data: authData } = await supabase.auth.getUser();
+      const role = (authData?.user?.app_metadata?.role as string) || (authData?.user?.user_metadata?.role as string) || localStorage.getItem("buddy_user_role") || "buddy";
 
       if (role !== "buddy") {
         toast.error("Unauthorized access");
         router.push("/unauthorized");
         return;
       }
+
+      const kycStatus = localStorage.getItem("buddy_kyc_status") || "unverified";
 
       if (kycStatus === "unverified") {
         toast.info("Please complete your KYC onboarding");

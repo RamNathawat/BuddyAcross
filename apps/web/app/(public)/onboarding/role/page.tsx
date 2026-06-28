@@ -11,17 +11,33 @@ export default function RoleSelectionPage() {
 
   const handleSelectRole = async (role: "tasker" | "buddy") => {
     localStorage.setItem("buddy_user_role", role);
+    const token = localStorage.getItem("buddy_auth_token") || "demo-token";
     const userId = localStorage.getItem("buddy_user_id") || "demo_user_" + Math.floor(Math.random() * 1000);
     const userEmail = localStorage.getItem("buddy_user_email") || `${userId}@example.com`;
+    const fullName = localStorage.getItem("buddy_user_name") || userEmail.split("@")[0] || "User";
 
     try {
       await supabase.from("users").upsert({
         id: userId,
         email: userEmail,
-        full_name: userEmail.split("@")[0],
+        full_name: fullName,
         role: role,
         updated_at: new Date().toISOString(),
       });
+
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/profile`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          fullName,
+          role,
+        }),
+      });
+
+      await supabase.auth.refreshSession();
     } catch {
       // Fallback
     }

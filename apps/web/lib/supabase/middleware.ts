@@ -56,5 +56,37 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (user) {
+    const role = (user.app_metadata?.role || user.user_metadata?.role) as string;
+    const pathname = request.nextUrl.pathname;
+    const isProtectedRoute = pathname.startsWith("/admin") || pathname.startsWith("/buddy") || pathname.startsWith("/tasker");
+
+    if (isProtectedRoute) {
+      if (!role) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/onboarding/role";
+        return NextResponse.redirect(url);
+      }
+
+      if (pathname.startsWith("/admin") && role !== "admin") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/unauthorized";
+        return NextResponse.redirect(url);
+      }
+
+      if (pathname.startsWith("/buddy") && role !== "buddy") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/unauthorized";
+        return NextResponse.redirect(url);
+      }
+
+      if (pathname.startsWith("/tasker") && role !== "tasker") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/unauthorized";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   return supabaseResponse;
 }

@@ -28,9 +28,14 @@ export default function PendingApprovalPage() {
 
       if (userId) {
         try {
-          const { data } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", userId).single();
+          const { data } = await supabase.from("buddy_profiles").select("id, kyc_status").eq("user_id", userId).single();
           if (data?.kyc_status) {
             localStorage.setItem("buddy_kyc_status", data.kyc_status);
+          } else if (data?.id) {
+            const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("buddy_id", data.id).single();
+            if (kycRow?.status) {
+              localStorage.setItem("buddy_kyc_status", kycRow.status);
+            }
           }
         } catch {}
       }
@@ -38,6 +43,7 @@ export default function PendingApprovalPage() {
       const savedStatus = localStorage.getItem("buddy_kyc_status") || "pending";
       const savedReason = localStorage.getItem("buddy_kyc_rejection_reason") || "";
       if (savedStatus === "approved") {
+        await supabase.auth.refreshSession();
         router.push("/buddy");
       } else {
         setStatus(savedStatus);
@@ -63,11 +69,11 @@ export default function PendingApprovalPage() {
 
     if (userId) {
       try {
-        const { data } = await supabase.from("buddy_profiles").select("kyc_status").eq("user_id", userId).single();
+        const { data } = await supabase.from("buddy_profiles").select("id, kyc_status").eq("user_id", userId).single();
         if (data?.kyc_status) {
           localStorage.setItem("buddy_kyc_status", data.kyc_status);
-        } else {
-          const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("user_id", userId).single();
+        } else if (data?.id) {
+          const { data: kycRow } = await supabase.from("kyc_submissions").select("status").eq("buddy_id", data.id).single();
           if (kycRow?.status) {
             localStorage.setItem("buddy_kyc_status", kycRow.status);
           }
@@ -77,6 +83,7 @@ export default function PendingApprovalPage() {
 
     const current = localStorage.getItem("buddy_kyc_status") || "pending";
     if (current === "approved") {
+      await supabase.auth.refreshSession();
       toast.success("Congratulations! Your KYC is approved!");
       router.push("/buddy");
     } else if (current === "rejected" || current === "resubmission_requested") {

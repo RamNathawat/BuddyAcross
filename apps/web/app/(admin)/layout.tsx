@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AdminSidebar, Topbar } from "@/components/layout";
 import { useAuthSync } from "@/lib/auth/logout";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLayout({
   children,
@@ -11,6 +13,19 @@ export default function AdminLayout({
 }) {
   useAuthSync();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function checkRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      const role = user?.app_metadata?.role as string;
+      if (role !== "admin") {
+        router.push("/unauthorized");
+      }
+    }
+    checkRole();
+  }, [router, supabase]);
 
   return (
     <div className="min-h-screen">

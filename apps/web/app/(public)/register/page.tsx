@@ -60,10 +60,17 @@ export default function RegisterPage() {
 
       let authError = null;
 
+      const metadataPayload = {
+        role: role,
+        full_name: fullName,
+        city: city,
+      };
+
       if (isEmail) {
         const { error } = await supabase.auth.signInWithOtp({
           email: targetIdentifier,
           options: {
+            data: metadataPayload,
             emailRedirectTo: `${window.location.origin}/verify?email=${encodeURIComponent(targetIdentifier)}`,
           },
         });
@@ -71,6 +78,9 @@ export default function RegisterPage() {
       } else {
         const { error } = await supabase.auth.signInWithOtp({
           phone: targetIdentifier,
+          options: {
+            data: metadataPayload,
+          },
         });
         authError = error;
       }

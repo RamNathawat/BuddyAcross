@@ -1,17 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { PlusCircle, ListTodo, ShieldCheck, Zap } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
 export default function TaskerDashboardPage() {
   const [userName, setUserName] = useState("Tasker");
+  const [city, setCity] = useState("Bengaluru");
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    const saved = localStorage.getItem("buddy_user_name");
-    if (saved) setUserName(saved);
-  }, []);
+    async function checkRole() {
+      const saved = localStorage.getItem("buddy_user_name");
+      if (saved) setUserName(saved);
+      const savedCity = localStorage.getItem("buddy_profile_city");
+      if (savedCity) setCity(savedCity);
+
+      const token = localStorage.getItem("buddy_auth_token");
+      if (token && token !== "demo-token") {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.data?.user?.fullName) {
+              setUserName(data.data.user.fullName);
+              localStorage.setItem("buddy_user_name", data.data.user.fullName);
+            }
+            if (data?.data?.profile?.city) {
+              setCity(data.data.profile.city);
+              localStorage.setItem("buddy_profile_city", data.data.profile.city);
+            }
+          }
+        } catch {}
+      }
+
+      const { data: authData } = await supabase.auth.getUser();
+      const role = (authData?.user?.app_metadata?.role as string) || (authData?.user?.user_metadata?.role as string) || localStorage.getItem("buddy_user_role") || "tasker";
+      if (role !== "tasker") {
+        toast.error("Unauthorized access");
+        router.push("/unauthorized");
+      }
+    }
+    checkRole();
+  }, [router, supabase]);
 
   return (
     <div className="space-y-6 animate-fade-in relative">
@@ -24,7 +62,7 @@ export default function TaskerDashboardPage() {
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight">Welcome back, {userName}! 👋</h1>
           <p className="text-sm text-muted-foreground max-w-md">
-            Your Tasker profile is verified for Bengaluru hyperlocal service zones.
+            Your Tasker profile is verified for {city} hyperlocal service zones.
           </p>
         </div>
         <Button disabled className="bg-lime-400 text-black font-bold opacity-80 shadow-md glow-lime relative z-10 h-11 px-6">

@@ -37,6 +37,10 @@ export const usersRelations = relations(users, ({ one }) => ({
     fields: [users.id],
     references: [buddyProfiles.userId],
   }),
+  taskerProfile: one(taskers, {
+    fields: [users.id],
+    references: [taskers.userId],
+  }),
 }));
 
 // ============================================================
@@ -125,3 +129,31 @@ export const kycSubmissionsRelations = relations(
     }),
   })
 );
+
+// ============================================================
+// Taskers Table
+// ============================================================
+export const taskers = pgTable(
+  "taskers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    fullName: varchar("full_name", { length: 100 }).notNull(),
+    city: varchar("city", { length: 100 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("taskers_user_id_idx").on(table.userId),
+  ]
+);
+
+export const taskersRelations = relations(taskers, ({ one }) => ({
+  user: one(users, {
+    fields: [taskers.userId],
+    references: [users.id],
+  }),
+}));

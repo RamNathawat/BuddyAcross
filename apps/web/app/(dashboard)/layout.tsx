@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar, Topbar, MobileNav } from "@/components/layout";
 import { useAuthSync } from "@/lib/auth/logout";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardLayout({
   children,
@@ -13,8 +14,25 @@ export default function DashboardLayout({
   useAuthSync();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
 
-  const role = pathname?.startsWith("/buddy") ? "buddy" : "tasker";
+  const [role, setRole] = useState<"buddy" | "tasker">(pathname?.startsWith("/buddy") ? "buddy" : "tasker");
+
+  useEffect(() => {
+    async function checkRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userRole = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string);
+      if (pathname?.startsWith("/buddy") && userRole !== "buddy") {
+        router.push("/unauthorized");
+      } else if (pathname?.startsWith("/tasker") && userRole !== "tasker") {
+        router.push("/unauthorized");
+      } else if (userRole === "buddy" || userRole === "tasker") {
+        setRole(userRole);
+      }
+    }
+    checkRole();
+  }, [pathname, router, supabase]);
 
   return (
     <div className="min-h-screen">

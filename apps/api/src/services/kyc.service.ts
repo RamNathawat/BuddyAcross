@@ -3,6 +3,7 @@ import { db } from "../config/database.js";
 import { users, buddyProfiles, kycSubmissions } from "../db/schema.js";
 import type { SubmitKycDto, ReviewKycDto } from "../validation/kyc.schema.js";
 import { createAppError } from "../middleware/error-handler.js";
+import { supabaseAdmin } from "../config/supabase.js";
 
 export class KycService {
   /**
@@ -148,13 +149,24 @@ export class KycService {
       .returning();
 
     // Update buddy profile status
-    await db
+    const updatedProfiles = await db
       .update(buddyProfiles)
       .set({
         kycStatus: dto.status,
         updatedAt: new Date(),
       })
-      .where(eq(buddyProfiles.id, kyc.buddyId));
+      .where(eq(buddyProfiles.id, kyc.buddyId))
+      .returning();
+
+    if (updatedProfiles.length > 0 && updatedProfiles[0].userId) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(updatedProfiles[0].userId, {
+          app_metadata: { kyc_status: dto.status },
+        });
+      } catch (err) {
+        console.warn("Could not sync kyc_status to Supabase Auth metadata:", err);
+      }
+    }
 
     return updatedKyc[0];
   }

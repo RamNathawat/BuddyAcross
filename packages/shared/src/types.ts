@@ -58,6 +58,18 @@ export interface BuddyProfile {
 }
 
 // ============================================================
+// Tasker Profile
+// ============================================================
+export interface TaskerProfile {
+  id: string;
+  userId: string;
+  fullName: string;
+  city: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================
 // KYC Submission
 // ============================================================
 export interface KycSubmission {
@@ -71,6 +83,14 @@ export interface KycSubmission {
   submittedAt: string;
   reviewedAt: string | null;
   reviewedBy: string | null;
+  accountHolder?: string | null;
+  accountNumber?: string | null;
+  ifscCode?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+  skills?: string[] | null;
+  zones?: string[] | null;
+  submittedAgo?: string | null;
 }
 
 // ============================================================
@@ -78,7 +98,7 @@ export interface KycSubmission {
 // ============================================================
 export interface CurrentUserResponse {
   user: User;
-  profile?: BuddyProfile | null;
+  profile?: BuddyProfile | TaskerProfile | null;
   kyc?: KycSubmission | null;
 }
 

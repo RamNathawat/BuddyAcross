@@ -71,7 +71,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
 
             return (
               <Link
-                key={item.href}
+                key={item.label}
                 href={item.href}
                 onClick={onClose}
                 className={cn(

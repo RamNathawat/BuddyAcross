@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,36 @@ export default function TaskerOnboardingPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    async function loadProfile() {
+      const savedName = localStorage.getItem("buddy_user_name");
+      if (savedName) setFullName(savedName);
+      const savedCity = localStorage.getItem("buddy_profile_city");
+      if (savedCity) setCity(savedCity);
+      const savedState = localStorage.getItem("buddy_profile_state");
+      if (savedState) setState(savedState);
+      const savedPincode = localStorage.getItem("buddy_profile_pincode");
+      if (savedPincode) setPincode(savedPincode);
+      const savedAddress = localStorage.getItem("buddy_profile_address");
+      if (savedAddress) setAddress(savedAddress);
+
+      const token = localStorage.getItem("buddy_auth_token");
+      if (token && token !== "demo-token") {
+        try {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/me`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.data?.user?.fullName) setFullName(data.data.user.fullName);
+            if (data?.data?.profile?.city) setCity(data.data.profile.city);
+          }
+        } catch {}
+      }
+    }
+    loadProfile();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,23 +67,12 @@ export default function TaskerOnboardingPage() {
 
     localStorage.setItem("buddy_user_name", fullName);
     localStorage.setItem("buddy_profile_city", city);
+    localStorage.setItem("buddy_profile_state", state);
+    localStorage.setItem("buddy_profile_pincode", pincode);
+    localStorage.setItem("buddy_profile_address", address);
 
     try {
-      await supabase.from("users").upsert({
-        id: userId,
-        email: userEmail,
-        full_name: fullName,
-        role: "tasker",
-        updated_at: new Date().toISOString(),
-      });
-
-      await supabase.from("taskers").upsert({
-        user_id: userId,
-        full_name: fullName,
-        city,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
-
+      // Primary persistence path: Express API
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/profile`, {
         method: "POST",
         headers: {
@@ -70,7 +89,27 @@ export default function TaskerOnboardingPage() {
         }),
       });
     } catch {
-      // Offline fallback
+      // Offline / network failure fallback
+    }
+
+    // Optional / fallback client-side Supabase write
+    try {
+      await supabase.from("users").upsert({
+        id: userId,
+        email: userEmail,
+        full_name: fullName,
+        role: "tasker",
+        updated_at: new Date().toISOString(),
+      });
+
+      await supabase.from("taskers").upsert({
+        user_id: userId,
+        full_name: fullName,
+        city,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+    } catch {
+      // Optional fallback error ignored
     }
 
     toast.success("Profile saved! Welcome to BuddyAcross.");

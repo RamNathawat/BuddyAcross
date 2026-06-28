@@ -24,8 +24,17 @@ function VerifyContent() {
     if (userEmail || user.email) localStorage.setItem("buddy_user_email", userEmail || user.email);
     if (user.phone) localStorage.setItem("buddy_user_phone", user.phone);
 
-    let userRole = localStorage.getItem("buddy_user_role");
+    const metaRole = user?.user_metadata?.role || user?.app_metadata?.role;
+    const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name;
+    const metaCity = user?.user_metadata?.city;
+
+    let userRole = localStorage.getItem("buddy_user_role") || metaRole;
+    let userName = localStorage.getItem("buddy_user_name") || metaName;
     let kycStatus = localStorage.getItem("buddy_kyc_status");
+
+    if (userRole) localStorage.setItem("buddy_user_role", userRole);
+    if (userName) localStorage.setItem("buddy_user_name", userName);
+    if (metaCity) localStorage.setItem("buddy_profile_city", metaCity);
 
     try {
       await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/sync`, {
@@ -36,7 +45,7 @@ function VerifyContent() {
           email: userEmail || user.email,
           phone: user.phone,
           role: userRole || undefined,
-          fullName: localStorage.getItem("buddy_user_name") || undefined,
+          fullName: userName || undefined,
         }),
       });
 
@@ -84,6 +93,8 @@ function VerifyContent() {
           localStorage.setItem("buddy_kyc_status", kycStatus!);
         }
       }
+
+      await supabase.auth.refreshSession();
     } catch {}
 
     toast.success("Identity verified successfully!");

@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "check-db": "tsx src/check_db.ts"
+    "check-db": "tsx src/check_db.ts",
+    "promote-admin": "tsx src/promote_admin.ts"
   },
   "dependencies": {
     "@buddyacross/shared": "*",

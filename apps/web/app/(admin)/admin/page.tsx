@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ShieldCheck, Check, X, RotateCcw, Eye, FileText } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -28,6 +29,7 @@ export default function AdminDashboardPage() {
   const [selectedDocs, setSelectedDocs] = useState<MockKycRecord | null>(null);
   const [filterTab, setFilterTab] = useState<"pending" | "reviewed" | "all">("pending");
   const supabase = createClient();
+  const router = useRouter();
 
   const filteredQueue = queue.filter((item) => {
     if (filterTab === "pending") return item.status === "pending";
@@ -37,14 +39,25 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     async function fetchDbKyc() {
+      const { data: authData } = await supabase.auth.getUser();
+      const role = authData?.user?.app_metadata?.role as string;
+      if (role !== "admin") {
+        toast.error("Unauthorized access");
+        router.push("/unauthorized");
+        return;
+      }
+
       try {
-        const token = localStorage.getItem("buddy_auth_token") || "demo-token";
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (!token) return;
+
         const apiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (apiRes.ok) {
           const json = await apiRes.json();
-          if (json.data && json.data.length > 0) {
+          if (json.data && Array.isArray(json.data)) {
             const apiRecords: MockKycRecord[] = json.data.map((item: any) => ({
               id: item.submission.id,
               buddyName: item.user.fullName || "Buddy User",
@@ -58,45 +71,16 @@ export default function AdminDashboardPage() {
               notes: item.submission.rejectionReason || "",
             }));
             setQueue(apiRecords);
-            return;
           }
+        } else {
+          toast.error("Failed to load KYC queue from server.");
         }
-      } catch {}
-
-      try {
-        const { data } = await supabase.from("kyc_submissions").select("*").order("submitted_at", { ascending: false });
-        if (data && data.length > 0) {
-          const dbRecords: MockKycRecord[] = data.map((row: any) => ({
-            id: row.id,
-            buddyName: row.buddy_name || "Buddy User",
-            city: row.city || "Location not specified",
-            skills: row.skills || ["General Service"],
-            submittedAgo: row.submitted_ago || "Recently",
-            status: row.status || "pending",
-            aadhaarFront: row.aadhaar_front || "",
-            aadhaarBack: row.aadhaar_back || "",
-            selfie: row.selfie || "",
-            notes: row.rejection_reason || "",
-          }));
-          setQueue(dbRecords);
-          return;
-        }
-      } catch {}
-
-      try {
-        const liveSub = localStorage.getItem("buddy_live_kyc_submission");
-        if (liveSub) {
-          const parsed = JSON.parse(liveSub);
-          setQueue((prev) => {
-            const exists = prev.some((item) => item.id === parsed.id);
-            if (exists) return prev.map((item) => (item.id === parsed.id ? parsed : item));
-            return [parsed, ...prev];
-          });
-        }
-      } catch {}
+      } catch (err) {
+        toast.error("Network error fetching KYC records.");
+      }
     }
     fetchDbKyc();
-  }, []);
+  }, [router, supabase]);
 
   const handleReview = async (id: string, action: "approved" | "rejected" | "resubmission_requested") => {
     let reason = "";
@@ -105,28 +89,15 @@ export default function AdminDashboardPage() {
       if (!reason) return;
     }
 
-    setQueue((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const updated = { ...item, status: action, notes: reason };
-          try {
-            const liveSub = localStorage.getItem("buddy_live_kyc_submission");
-            if (liveSub && JSON.parse(liveSub).id === id) {
-              localStorage.setItem("buddy_live_kyc_submission", JSON.stringify(updated));
-            }
-          } catch {}
-          return updated;
-        }
-        return item;
-      })
-    );
-
-    localStorage.setItem("buddy_kyc_status", action);
-    if (reason) localStorage.setItem("buddy_kyc_rejection_reason", reason);
-
     try {
-      const token = localStorage.getItem("buddy_auth_token") || "demo-token";
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc/${id}/review`, {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc/${id}/review`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,18 +108,26 @@ export default function AdminDashboardPage() {
           rejectionReason: reason || undefined,
         }),
       });
-    } catch {}
 
-    try {
-      await supabase.from("kyc_submissions").update({ status: action, rejection_reason: reason }).eq("id", id);
-      const { data: kycRow } = await supabase.from("kyc_submissions").select("user_id").eq("id", id).single();
-      if (kycRow?.user_id) {
-        await supabase.from("buddy_profiles").update({ kyc_status: action }).eq("user_id", kycRow.user_id);
+      if (!res.ok) {
+        toast.error("Failed to update KYC status on server.");
+        return;
       }
-    } catch {}
 
-    toast.success(`KYC request #${id} marked as ${action.toUpperCase().replace("_", " ")}`);
-    if (selectedDocs?.id === id) setSelectedDocs(null);
+      setQueue((prev) =>
+        prev.map((item) => {
+          if (item.id === id) {
+            return { ...item, status: action, notes: reason };
+          }
+          return item;
+        })
+      );
+
+      toast.success(`KYC request #${id} marked as ${action.toUpperCase().replace("_", " ")}`);
+      if (selectedDocs?.id === id) setSelectedDocs(null);
+    } catch (err) {
+      toast.error("Error submitting review action.");
+    }
   };
 
   return (

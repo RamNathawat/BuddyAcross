@@ -13,6 +13,15 @@ import adminRoutes from "./routes/admin.routes.js";
 export function createApp() {
   const app = express();
 
+  // ── Prevent 304 Caching on API ────────────────────────────
+  app.set("etag", false);
+  app.use((_req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   // ── Security ──────────────────────────────────────────────
   app.use(helmet());
   app.use(
