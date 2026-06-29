@@ -240,7 +240,7 @@ export default function BuddyKycUploadPage() {
     localStorage.setItem("buddy_profile_zones", JSON.stringify(selectedZones));
     localStorage.setItem("buddy_user_name", fullName);
     
-    const submissionId = "sub_" + Math.floor(1000 + Math.random() * 9000);
+    const submissionId = crypto.randomUUID();
     let finalFront = frontUrl;
     let finalBack = backUrl;
     let finalSelfie = selfieUrl;
