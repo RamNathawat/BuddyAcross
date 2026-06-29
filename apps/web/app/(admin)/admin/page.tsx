@@ -80,55 +80,53 @@ export default function AdminDashboardPage() {
         // Silently fall back to direct database query when Express server is unreachable
       }
 
-      // Fall back to direct Supabase database query
-      if (!apiSuccess || loadedRecords.length === 0) {
-        try {
-          const { data: dbSubmissions } = await supabase
-            .from("kyc_submissions")
-            .select("*")
-            .order("submitted_at", { ascending: false });
+      // Always query direct Supabase database to catch records submitted directly from client devices
+      try {
+        const { data: dbSubmissions } = await supabase
+          .from("kyc_submissions")
+          .select("*")
+          .order("submitted_at", { ascending: false });
 
-          if (dbSubmissions && Array.isArray(dbSubmissions) && dbSubmissions.length > 0) {
-            const buddyIds = Array.from(new Set(dbSubmissions.map((s) => s.buddy_id).filter(Boolean)));
-            const { data: profiles } = buddyIds.length > 0
-              ? await supabase.from("buddy_profiles").select("*").in("id", buddyIds)
-              : { data: [] };
+        if (dbSubmissions && Array.isArray(dbSubmissions) && dbSubmissions.length > 0) {
+          const buddyIds = Array.from(new Set(dbSubmissions.map((s) => s.buddy_id).filter(Boolean)));
+          const { data: profiles } = buddyIds.length > 0
+            ? await supabase.from("buddy_profiles").select("*").in("id", buddyIds)
+            : { data: [] };
 
-            const userIds = Array.from(new Set((profiles || []).map((p) => p.user_id).filter(Boolean)));
-            const { data: usersList } = userIds.length > 0
-              ? await supabase.from("users").select("*").in("id", userIds)
-              : { data: [] };
+          const userIds = Array.from(new Set((profiles || []).map((p) => p.user_id).filter(Boolean)));
+          const { data: usersList } = userIds.length > 0
+            ? await supabase.from("users").select("*").in("id", userIds)
+            : { data: [] };
 
-            const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
-            const userMap = new Map((usersList || []).map((u) => [u.id, u]));
+          const profileMap = new Map((profiles || []).map((p) => [p.id, p]));
+          const userMap = new Map((usersList || []).map((u) => [u.id, u]));
 
-            const dbRecords: MockKycRecord[] = dbSubmissions.map((sub: any) => {
-              const prof = profileMap.get(sub.buddy_id);
-              const u = prof ? userMap.get(prof.user_id) : null;
-              const location = prof?.city ? (prof.pincode ? `${prof.city} (${prof.pincode})` : prof.city) : "Location not specified";
-              return {
-                id: sub.id,
-                buddyName: u?.full_name || sub.account_holder || "Buddy User",
-                city: location,
-                skills: sub.skills || prof?.skills || ["General Service"],
-                submittedAgo: sub.submitted_ago || "Recently",
-                status: sub.status || "pending",
-                aadhaarFront: sub.aadhaar_front || "",
-                aadhaarBack: sub.aadhaar_back || "",
-                selfie: sub.selfie || "",
-                notes: sub.rejection_reason || "",
-              };
-            });
+          const dbRecords: MockKycRecord[] = dbSubmissions.map((sub: any) => {
+            const prof = profileMap.get(sub.buddy_id);
+            const u = prof ? userMap.get(prof.user_id) : null;
+            const location = prof?.city ? (prof.pincode ? `${prof.city} (${prof.pincode})` : prof.city) : "Location not specified";
+            return {
+              id: sub.id,
+              buddyName: u?.full_name || sub.account_holder || "Buddy User",
+              city: location,
+              skills: sub.skills || prof?.skills || ["General Service"],
+              submittedAgo: sub.submitted_ago || "Recently",
+              status: sub.status || "pending",
+              aadhaarFront: sub.aadhaar_front || "",
+              aadhaarBack: sub.aadhaar_back || "",
+              selfie: sub.selfie || "",
+              notes: sub.rejection_reason || "",
+            };
+          });
 
-            for (const rec of dbRecords) {
-              if (!loadedRecords.some((r) => r.id === rec.id)) {
-                loadedRecords.push(rec);
-              }
+          for (const rec of dbRecords) {
+            if (!loadedRecords.some((r) => r.id === rec.id)) {
+              loadedRecords.push(rec);
             }
           }
-        } catch (dbErr) {
-          console.error("Supabase fallback fetch error:", dbErr);
         }
+      } catch (dbErr) {
+        console.error("Supabase fallback fetch error:", dbErr);
       }
 
       // Sync with localStorage for live demo submissions
