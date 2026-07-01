@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Calendar, IndianRupee, ShieldCheck, CheckCircle2, PhoneCall } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, IndianRupee, ShieldCheck, CheckCircle2, PhoneCall, Edit3, X } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useTask } from "@/lib/hooks/useTask";
 import { useBids } from "@/lib/hooks/useBids";
@@ -14,14 +14,22 @@ export default function BuddyTaskDetailsPage() {
   const taskId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string);
 
   const { task, loading, error, refetch } = useTask(taskId);
-  const { placeBid, submitting } = useBids();
+  const { placeBid, updateBidAmount, submitting } = useBids();
 
   const [price, setPrice] = useState<string>("");
   const [message, setMessage] = useState<string>("");
 
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editMessage, setEditMessage] = useState<string>("");
+
   useEffect(() => {
     if (task && !price) {
       setPrice(task.budgetMax.toString());
+    }
+    if (task?.myBid) {
+      setEditPrice(task.myBid.amount?.toString() || "");
+      setEditMessage(task.myBid.message || "");
     }
   }, [task, price]);
 
@@ -64,6 +72,19 @@ export default function BuddyTaskDetailsPage() {
       await placeBid(task.id, { amount, message: message.trim() || undefined });
       refetch();
       router.push("/buddy");
+    } catch {}
+  };
+
+  const handleUpdateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!task.myBid) return;
+    const amount = Number(editPrice);
+    if (!amount || amount < 300) return;
+
+    try {
+      await updateBidAmount(task.myBid.id, { amount, message: editMessage.trim() || undefined });
+      setIsEditing(false);
+      refetch();
     } catch {}
   };
 
@@ -172,24 +193,97 @@ export default function BuddyTaskDetailsPage() {
         <Card className="border-2 border-border p-6 space-y-4 bg-card/80">
           <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <span className="text-sm font-bold text-muted-foreground">Your Submitted Offer</span>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-lime-400/20 text-lime-600 dark:text-lime-400 border border-lime-400/30">
-              {task.myBid?.status}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Bid Price</span>
-            <span className="text-xl font-extrabold flex items-center text-foreground">
-              <IndianRupee className="size-5 text-lime-600 dark:text-lime-400 mr-0.5" />
-              {task.myBid?.amount}
-            </span>
-          </div>
-          {task.myBid?.message && (
-            <div className="space-y-1 pt-2">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your Message</span>
-              <p className="text-sm text-foreground bg-secondary/40 p-3 rounded-xl border border-border/40">
-                {task.myBid.message}
-              </p>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-lime-400/20 text-lime-600 dark:text-lime-400 border border-lime-400/30">
+                {task.myBid?.status}
+              </span>
+              {task.myBid?.status === "pending" && !isEditing && !isAccepted && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary hover:bg-secondary/80 border border-border text-xs font-bold transition-colors"
+                >
+                  <Edit3 className="size-3.5" /> Modify Proposal
+                </button>
+              )}
             </div>
+          </div>
+
+          {isEditing && task.myBid?.status === "pending" ? (
+            <form onSubmit={handleUpdateSubmit} className="space-y-4 pt-1 animate-fade-in">
+              <div className="space-y-2">
+                <label htmlFor="editPrice" className="text-sm font-bold text-foreground flex items-center justify-between">
+                  <span>Updated price (₹)</span>
+                  <span className="text-xs font-normal text-muted-foreground">Min. ₹300</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₹</span>
+                  <input
+                    id="editPrice"
+                    type="number"
+                    min={300}
+                    required
+                    value={editPrice}
+                    onChange={(e) => setEditPrice(e.target.value)}
+                    className="flex h-11 w-full rounded-xl border border-border bg-background pl-8 pr-4 text-base font-bold shadow-xs transition-colors focus:outline-hidden focus:ring-2 focus:ring-lime-400"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="editMessage" className="text-sm font-bold text-foreground">
+                  Updated message to Poster
+                </label>
+                <textarea
+                  id="editMessage"
+                  rows={3}
+                  maxLength={500}
+                  value={editMessage}
+                  onChange={(e) => setEditMessage(e.target.value)}
+                  className="flex min-h-[80px] w-full rounded-xl border border-border bg-background p-3.5 text-sm shadow-xs focus:outline-hidden focus:ring-2 focus:ring-lime-400 leading-relaxed"
+                  placeholder="Update your availability or notes..."
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting || !editPrice || Number(editPrice) < 300}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl text-sm font-extrabold shadow-md h-11 px-6 bg-lime-400 hover:bg-lime-500 text-black transition-all hover:shadow-lg disabled:opacity-50 hover-glow-btn"
+                >
+                  {submitting ? "Updating..." : "Save Updated Proposal"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditPrice(task.myBid?.amount?.toString() || "");
+                    setEditMessage(task.myBid?.message || "");
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl text-sm font-bold h-11 px-4 bg-background border border-border hover:bg-secondary text-foreground transition-colors"
+                >
+                  <X className="size-4" /> Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Bid Price</span>
+                <span className="text-xl font-extrabold flex items-center text-foreground">
+                  <IndianRupee className="size-5 text-lime-600 dark:text-lime-400 mr-0.5" />
+                  {task.myBid?.amount}
+                </span>
+              </div>
+              {task.myBid?.message && (
+                <div className="space-y-1 pt-2">
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your Message</span>
+                  <p className="text-sm text-foreground bg-secondary/40 p-3 rounded-xl border border-border/40">
+                    {task.myBid.message}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </Card>
       ) : !isAccepted ? (

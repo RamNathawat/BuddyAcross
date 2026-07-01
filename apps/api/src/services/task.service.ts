@@ -206,8 +206,8 @@ export class TaskService {
           email: b.status === "accepted" ? (b.buddyEmail || "buddy@buddyacross.in") : undefined,
         },
       }));
-    } else if (isBuddy && currentUserId) {
-      // Buddy sees only their own bid
+    } else if (currentUserId) {
+      // User sees their own bid on this task
       const [userBid] = await db
         .select()
         .from(bids)
@@ -218,6 +218,8 @@ export class TaskService {
         myBid = userBid;
       }
     }
+
+    const canSeeTaskerContact = isTaskOwner || myBid?.status === "accepted" || (row.acceptedBidId && myBid?.id === row.acceptedBidId);
 
     return {
       id: row.id,
@@ -236,8 +238,8 @@ export class TaskService {
       tasker: {
         fullName: row.taskerName || "Verified Resident",
         avatarUrl: row.taskerAvatar || null,
-        phone: row.status === "accepted" && (isTaskOwner || myBid?.status === "accepted") ? (row.taskerPhone || "+91 98765 43210") : undefined,
-        email: row.status === "accepted" && (isTaskOwner || myBid?.status === "accepted") ? (row.taskerEmail || "tasker@buddyacross.in") : undefined,
+        phone: row.status !== "open" && row.status !== "cancelled" && canSeeTaskerContact ? (row.taskerPhone || "+91 98765 43210") : undefined,
+        email: row.status !== "open" && row.status !== "cancelled" && canSeeTaskerContact ? (row.taskerEmail || "tasker@buddyacross.in") : undefined,
       },
       bids: taskBids,
       myBid,

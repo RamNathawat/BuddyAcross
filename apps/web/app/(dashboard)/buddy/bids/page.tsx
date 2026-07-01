@@ -9,7 +9,12 @@ import { updateBid } from "@/lib/api/bids";
 import { createClient } from "@/lib/supabase/client";
 
 export default function BuddyMyBidsPage() {
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("buddy_user_id") || null;
+    }
+    return null;
+  });
   const [filter, setFilter] = useState<"all" | "pending" | "accepted" | "rejected">("all");
   const [editingBidId, setEditingBidId] = useState<string | null>(null);
   const [newAmount, setNewAmount] = useState<string>("");
@@ -21,6 +26,9 @@ export default function BuddyMyBidsPage() {
       const { data } = await supabase.auth.getUser();
       if (data?.user?.id) {
         setUserId(data.user.id);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("buddy_user_id", data.user.id);
+        }
       } else {
         const localId = localStorage.getItem("buddy_user_id");
         if (localId) setUserId(localId);
@@ -29,7 +37,10 @@ export default function BuddyMyBidsPage() {
     getUser();
   }, [supabase]);
 
-  const { tasks, loading, error, refetch } = useTasks(userId ? { bidderId: userId } : {});
+  const { tasks, loading, error, refetch } = useTasks(
+    userId ? { bidderId: userId } : {},
+    { enabled: !!userId }
+  );
 
   const handleUpdateBid = async (bidId: string) => {
     const amt = Number(newAmount);
@@ -50,7 +61,7 @@ export default function BuddyMyBidsPage() {
     }
   };
 
-  if (loading && !userId) {
+  if (loading || !userId) {
     return (
       <div className="max-w-4xl mx-auto space-y-6 py-4 animate-pulse">
         <div className="h-6 bg-muted rounded-md w-32" />

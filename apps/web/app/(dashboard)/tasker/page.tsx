@@ -13,10 +13,18 @@ import { useTasks } from "@/lib/hooks/useTasks";
 export default function TaskerDashboardPage() {
   const [userName, setUserName] = useState("Tasker");
   const [city, setCity] = useState("Bengaluru");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("buddy_user_id") || null;
+    }
+    return null;
+  });
   const router = useRouter();
   const supabase = createClient();
-  const { tasks, loading, error, refetch } = useTasks(userId ? { taskerId: userId } : {});
+  const { tasks, loading, error, refetch } = useTasks(
+    userId ? { taskerId: userId } : {},
+    { enabled: !!userId }
+  );
 
   useEffect(() => {
     async function checkRole() {
@@ -48,6 +56,9 @@ export default function TaskerDashboardPage() {
       const { data: authData } = await supabase.auth.getUser();
       if (authData?.user?.id) {
         setUserId(authData.user.id);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("buddy_user_id", authData.user.id);
+        }
       } else {
         const localId = localStorage.getItem("buddy_user_id");
         if (localId) setUserId(localId);
@@ -126,7 +137,7 @@ export default function TaskerDashboardPage() {
           </div>
         </div>
 
-        {loading && !userId ? (
+        {loading || !userId ? (
           <div className="grid md:grid-cols-2 gap-4">
             {[1, 2].map((i) => (
               <div key={i} className="h-44 rounded-xl border bg-card p-6 animate-pulse space-y-3">

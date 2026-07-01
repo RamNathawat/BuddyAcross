@@ -170,7 +170,7 @@ export async function optionalAuth(
       req.user = {
         id: user.id,
         phone: user.phone || "",
-        role: (user.app_metadata?.role as string) || "",
+        role: (user.app_metadata?.role as string) || (user.user_metadata?.role as string) || "",
         kycStatus: user.app_metadata?.kyc_status as string | undefined,
       };
     }
