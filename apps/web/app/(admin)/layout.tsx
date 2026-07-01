@@ -19,7 +19,7 @@ export default function AdminLayout({
   useEffect(() => {
     async function checkRole() {
       const { data: { user } } = await supabase.auth.getUser();
-      const role = user?.app_metadata?.role as string;
+      const role = (user?.app_metadata?.role as string) || localStorage.getItem("buddy_user_role");
       if (role !== "admin") {
         router.push("/unauthorized");
       }

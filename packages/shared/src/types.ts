@@ -111,18 +111,19 @@ export interface Task {
   title: string;
   description: string;
   category: TaskCategory;
+  zone: string;
   budgetMin: number;
   budgetMax: number;
-  locationLat: number;
-  locationLng: number;
-  locationAddress: string;
   status: TaskStatus;
   acceptedBidId: string | null;
-  assignedBuddyId: string | null;
-  imageUrls: string[];
-  completedAt: string | null;
-  cancelledAt: string | null;
-  cancellationReason: string | null;
+  locationLat?: number;
+  locationLng?: number;
+  locationAddress?: string;
+  assignedBuddyId?: string | null;
+  imageUrls?: string[];
+  completedAt?: string | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -136,8 +137,8 @@ export interface Bid {
   buddyId: string;
   amount: number;
   message: string | null;
-  estimatedDuration: string | null;
   status: BidStatus;
+  estimatedDuration?: string | null;
   createdAt: string;
   updatedAt: string;
 }

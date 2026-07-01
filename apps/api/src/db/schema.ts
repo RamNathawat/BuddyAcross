@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   boolean,
+  integer,
   timestamp,
   index,
 } from "drizzle-orm/pg-core";
@@ -32,7 +33,7 @@ export const users = pgTable(
   ]
 );
 
-export const usersRelations = relations(users, ({ one }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   buddyProfile: one(buddyProfiles, {
     fields: [users.id],
     references: [buddyProfiles.userId],
@@ -41,6 +42,8 @@ export const usersRelations = relations(users, ({ one }) => ({
     fields: [users.id],
     references: [taskers.userId],
   }),
+  tasks: many(tasks),
+  bids: many(bids),
 }));
 
 // ============================================================
@@ -157,3 +160,79 @@ export const taskersRelations = relations(taskers, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+// ============================================================
+// Tasks Table
+// ============================================================
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskerId: uuid("tasker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 100 }).notNull(),
+    description: text("description").notNull(),
+    category: varchar("category", { length: 50 }).notNull(),
+    zone: varchar("zone", { length: 100 }).notNull(),
+    budgetMin: integer("budget_min").notNull(),
+    budgetMax: integer("budget_max").notNull(),
+    status: varchar("status", { length: 30 }).default("open").notNull(),
+    acceptedBidId: uuid("accepted_bid_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("tasks_tasker_id_idx").on(table.taskerId),
+    index("tasks_status_idx").on(table.status),
+    index("tasks_zone_idx").on(table.zone),
+    index("tasks_category_idx").on(table.category),
+    index("tasks_created_at_idx").on(table.createdAt),
+  ]
+);
+
+export const tasksRelations = relations(tasks, ({ one, many }) => ({
+  tasker: one(users, {
+    fields: [tasks.taskerId],
+    references: [users.id],
+  }),
+  bids: many(bids),
+}));
+
+// ============================================================
+// Bids Table
+// ============================================================
+export const bids = pgTable(
+  "bids",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    buddyId: uuid("buddy_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    amount: integer("amount").notNull(),
+    message: text("message"),
+    status: varchar("status", { length: 30 }).default("pending").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("bids_task_id_idx").on(table.taskId),
+    index("bids_buddy_id_idx").on(table.buddyId),
+    index("bids_status_idx").on(table.status),
+  ]
+);
+
+export const bidsRelations = relations(bids, ({ one }) => ({
+  task: one(tasks, {
+    fields: [bids.taskId],
+    references: [tasks.id],
+  }),
+  buddy: one(users, {
+    fields: [bids.buddyId],
+    references: [users.id],
+  }),
+}));
+

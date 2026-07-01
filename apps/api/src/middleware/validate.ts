@@ -26,3 +26,31 @@ export function validate(schema: ZodSchema) {
     }
   };
 }
+
+/**
+ * Validates request query against a Zod schema.
+ * Returns 400 with field-level errors on failure.
+ */
+export function validateQuery(schema: ZodSchema) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      const parsed = schema.parse(req.query);
+      (req as any).validatedQuery = parsed;
+      Object.assign(req.query, parsed);
+      next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        res.status(400).json({
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message: "Invalid query parameters",
+            details: error.flatten().fieldErrors,
+          },
+        });
+        return;
+      }
+      next(error);
+    }
+  };
+}

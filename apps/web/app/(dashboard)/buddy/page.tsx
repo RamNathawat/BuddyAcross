@@ -2,16 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, Radar, Wallet, Zap } from "lucide-react";
+import { ShieldCheck, Radar, Wallet, Zap, Calendar, IndianRupee, ArrowRight, ListTodo } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/client";
+import { useTasks } from "@/lib/hooks/useTasks";
+import { HYPERLOCAL_ZONES } from "@/lib/constants/zones";
 
 export default function BuddyDashboardPage() {
   const [userName, setUserName] = useState("Buddy");
   const [authorized, setAuthorized] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<string>("All");
   const router = useRouter();
   const supabase = createClient();
+  const { tasks, loading, error, refetch } = useTasks({ status: "open" });
+
+  const filteredTasks = selectedZone === "All" ? tasks : tasks.filter((t) => t.zone === selectedZone);
 
   useEffect(() => {
     async function initDashboard() {
@@ -96,6 +103,12 @@ export default function BuddyDashboardPage() {
             You are cleared and verified to accept tasks across your Bengaluru hyperlocal zone.
           </p>
         </div>
+        <Link
+          href="/buddy/bids"
+          className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-extrabold shadow-md h-11 px-6 bg-lime-400 hover:bg-lime-500 text-black transition-all hover:shadow-lg hover-glow-btn shrink-0 relative z-10"
+        >
+          <ListTodo className="size-4" /> My Bids
+        </Link>
       </div>
 
       {/* Metrics Grid */}
@@ -143,16 +156,98 @@ export default function BuddyDashboardPage() {
         </Card>
       </div>
 
-      <Card className="bg-card/60 border-2 border-dashed border-border p-2">
-        <CardHeader>
-          <CardTitle className="text-base font-bold flex items-center gap-2">
-            <span>🎯 Ready for Phase 3 Marketplace</span>
-          </CardTitle>
-          <CardDescription className="text-sm leading-relaxed">
-            Your KYC onboarding is fully completed. Once Phase 3 initiates, you will receive real-time notifications for nearby cleaning, repair, and errand requests to bid on and earn.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      {/* Live Marketplace Feed */}
+      <div className="space-y-4 pt-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">Open tasks in your zones</h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Browse live chores posted by neighbors across Bengaluru
+            </p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <select
+              value={selectedZone}
+              onChange={(e) => setSelectedZone(e.target.value)}
+              className="h-10 rounded-xl border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-xs focus:outline-hidden focus:ring-2 focus:ring-lime-400 w-full sm:w-48"
+            >
+              <option value="All">All Zones</option>
+              {HYPERLOCAL_ZONES.map((z) => (
+                <option key={z} value={z}>{z}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-44 rounded-xl border bg-card p-6 animate-pulse space-y-3">
+                <div className="h-5 bg-muted rounded-md w-1/3" />
+                <div className="h-6 bg-muted rounded-md w-3/4" />
+                <div className="h-4 bg-muted rounded-md w-1/2 mt-4" />
+              </div>
+            ))}
+          </div>
+        ) : error ? (
+          <Card className="p-8 text-center border-2 border-destructive/20 bg-destructive/5">
+            <p className="text-sm font-bold text-destructive">{error}</p>
+            <button onClick={() => refetch()} className="mt-3 px-4 py-2 rounded-lg bg-background border border-border text-xs font-bold shadow-xs hover:bg-accent">
+              Try Again
+            </button>
+          </Card>
+        ) : filteredTasks.length === 0 ? (
+          <Card className="p-12 text-center border-2 border-dashed border-border bg-card/40">
+            <div className="mx-auto w-12 h-12 rounded-full bg-lime-400/10 flex items-center justify-center text-lime-600 dark:text-lime-400 mb-3">
+              <Radar className="size-6" />
+            </div>
+            <h3 className="font-bold text-lg">No open tasks right now</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1">
+              {selectedZone !== "All"
+                ? `No chores currently listed in ${selectedZone}. Try selecting All Zones to view opportunities citywide.`
+                : "Neighbors haven't posted any open tasks yet. Check back soon!"}
+            </p>
+          </Card>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {filteredTasks.map((t) => (
+              <Link
+                key={t.id}
+                href={`/buddy/tasks/${t.id}`}
+                className="rounded-xl border border-border bg-card text-card-foreground shadow-xs hover:border-lime-400/60 transition-all hover:shadow-md group block p-6 relative overflow-hidden"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-bold bg-lime-400/15 text-lime-600 dark:text-lime-400 border-lime-400/30">
+                    {t.zone}
+                  </span>
+                  <span className="text-xs font-semibold text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full">
+                    {t.bidCount} {t.bidCount === 1 ? "bid" : "bids"}
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-lg mt-2 group-hover:text-lime-600 dark:group-hover:text-lime-400 transition-colors line-clamp-2">
+                  {t.title}
+                </h3>
+                <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{t.description}</p>
+                <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 font-medium">
+                    <Calendar className="size-3.5 text-lime-600 dark:text-lime-400" />
+                    <span>Posted {new Date(t.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}</span>
+                  </div>
+                  <div className="text-base font-extrabold flex items-center text-foreground">
+                    <IndianRupee className="size-4 text-lime-600 dark:text-lime-400 mr-0.5" />
+                    {t.budgetMin === t.budgetMax ? t.budgetMin : `${t.budgetMin}–${t.budgetMax}`}
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <span className="inline-flex items-center justify-center gap-2 rounded-xl text-sm font-bold shadow-xs h-9 px-4 py-2 bg-lime-400 group-hover:bg-lime-500 text-black w-full transition-colors">
+                    Place Bid <ArrowRight className="size-4 ml-1 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

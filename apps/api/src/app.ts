@@ -9,6 +9,8 @@ import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import kycRoutes from "./routes/kyc.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import taskRoutes from "./routes/task.routes.js";
+import bidRoutes from "./routes/bid.routes.js";
 
 export function createApp() {
   const app = express();
@@ -60,6 +62,8 @@ export function createApp() {
   app.use("/v1/users", userRoutes);
   app.use("/v1/kyc", kycRoutes);
   app.use("/v1/admin", adminRoutes);
+  app.use("/v1/tasks", taskRoutes);
+  app.use("/v1/bids", bidRoutes);
 
   // ── 404 Handler ───────────────────────────────────────────
   app.use((_req, res) => {

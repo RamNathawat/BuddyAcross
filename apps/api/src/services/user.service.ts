@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "../config/database.js";
 import { users, buddyProfiles, kycSubmissions, taskers } from "../db/schema.js";
 import type { SyncUserDto } from "../validation/auth.schema.js";
@@ -11,7 +11,7 @@ export class UserService {
    * Sync Supabase auth user into Postgres users table
    */
   async syncUser(dto: SyncUserDto) {
-    const existing = await db
+    let existing = await db
       .select()
       .from(users)
       .where(eq(users.id, dto.id))
@@ -21,9 +21,24 @@ export class UserService {
     const actualPhone = dto.phone || (dto.email && !dto.email.includes("@") ? dto.email : null);
     const actualName = dto.fullName || (actualEmail ? actualEmail.split("@")[0] : actualPhone || "New User");
 
+    if (existing.length === 0 && actualPhone) {
+      const cleanPhone = actualPhone.replace(/^\+/, "");
+      const withPlus = "+" + cleanPhone;
+      const byPhone = await db
+        .select()
+        .from(users)
+        .where(or(eq(users.phone, actualPhone), eq(users.phone, cleanPhone), eq(users.phone, withPlus)))
+        .limit(1);
+      if (byPhone.length > 0) existing = byPhone;
+    }
+    if (existing.length === 0 && actualEmail) {
+      const byEmail = await db.select().from(users).where(eq(users.email, actualEmail)).limit(1);
+      if (byEmail.length > 0) existing = byEmail;
+    }
+
     if (existing.length > 0) {
       const u = existing[0];
-      if ((dto.role && !u.role) || (actualPhone && !u.phone) || (actualName !== "New User" && u.fullName === "New User")) {
+      if ((dto.role && dto.role !== u.role) || (actualPhone && !u.phone) || (actualName !== "New User" && u.fullName === "New User")) {
         const updated = await db
           .update(users)
           .set({
@@ -31,11 +46,11 @@ export class UserService {
             phone: actualPhone || u.phone,
             fullName: actualName !== "New User" ? actualName : u.fullName,
           })
-          .where(eq(users.id, dto.id))
+          .where(eq(users.id, u.id))
           .returning();
         if (dto.role) {
           try {
-            await supabaseAdmin.auth.admin.updateUserById(dto.id, {
+            await supabaseAdmin.auth.admin.updateUserById(u.id, {
               app_metadata: { role: dto.role },
             });
           } catch (e) {

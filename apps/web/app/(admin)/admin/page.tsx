@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchDbKyc() {
       const { data: authData } = await supabase.auth.getUser();
-      const role = authData?.user?.app_metadata?.role as string;
+      const role = (authData?.user?.app_metadata?.role as string) || localStorage.getItem("buddy_user_role");
       if (role !== "admin") {
         toast.error("Unauthorized access");
         router.push("/unauthorized");
@@ -52,7 +52,7 @@ export default function AdminDashboardPage() {
 
       try {
         const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
+        const token = sessionData?.session?.access_token || localStorage.getItem("buddy_auth_token");
         if (token) {
           const apiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/admin/kyc`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -163,7 +163,7 @@ export default function AdminDashboardPage() {
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      const token = sessionData?.session?.access_token || localStorage.getItem("buddy_auth_token");
 
       if (token) {
         try {

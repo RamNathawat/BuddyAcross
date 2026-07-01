@@ -19,6 +19,14 @@ async function checkDb() {
     const kyc = await sql`SELECT id, buddy_id, status, submitted_ago FROM kyc_submissions`;
     console.log(`\n[TABLE: kyc_submissions] (${kyc.length} rows)`);
     console.table(kyc);
+
+    const tasks = await sql`SELECT id, tasker_id, title, zone, budget_min, status FROM tasks`;
+    console.log(`\n[TABLE: tasks] (${tasks.length} rows)`);
+    console.table(tasks);
+
+    const bids = await sql`SELECT id, task_id, buddy_id, amount, status FROM bids`;
+    console.log(`\n[TABLE: bids] (${bids.length} rows)`);
+    console.table(bids);
   } catch (err) {
     console.error(err);
   } finally {

@@ -1,12 +1,15 @@
 import { z } from "zod";
+import fs from "fs";
+import path from "path";
 
 try {
-  process.loadEnvFile(".env");
-} catch {
-  try {
-    process.loadEnvFile();
-  } catch {}
-}
+  const apiEnvPath = path.resolve(process.cwd(), "apps/api/.env");
+  if (fs.existsSync(apiEnvPath)) {
+    process.loadEnvFile(apiEnvPath);
+  } else if (fs.existsSync(".env")) {
+    process.loadEnvFile(".env");
+  }
+} catch {}
 
 const envSchema = z.object({
   // Server

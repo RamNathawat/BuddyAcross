@@ -8,9 +8,23 @@ import { createClient } from "@/lib/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Mail, CheckCircle2, ArrowLeft } from "lucide-react";
 
+function generateDeterministicUUID(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  const hex = Math.abs(hash).toString(16).padStart(8, "0");
+  const hex2 = Math.abs(hash * 31).toString(16).padStart(12, "0");
+  return `${hex.slice(0, 8)}-1234-4321-8888-${hex2.padStart(12, "0").slice(0, 12)}`;
+}
+
 function VerifyContent() {
   const searchParams = useSearchParams();
   const emailParam = searchParams?.get("email") || "";
+  const modeParam = searchParams?.get("mode");
+  const bypassParam = searchParams?.get("bypass");
+  const isBypass = bypassParam === "true" || (typeof window !== "undefined" && localStorage.getItem("buddy_bypass_twilio") === "true");
   
   const [email, setEmail] = useState(emailParam);
   const [otp, setOtp] = useState("");
@@ -43,7 +57,7 @@ function VerifyContent() {
     if (metaCity) localStorage.setItem("buddy_profile_city", metaCity);
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/sync`, {
+      const syncRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/auth/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -54,6 +68,19 @@ function VerifyContent() {
           fullName: userName || undefined,
         }),
       });
+
+      if (syncRes.ok) {
+        const syncJson = await syncRes.json();
+        const syncedUser = syncJson.data;
+        if (syncedUser?.id) {
+          localStorage.setItem("buddy_user_id", syncedUser.id);
+        }
+        if (syncedUser?.role) {
+          userRole = syncedUser.role;
+          localStorage.setItem("buddy_user_role", userRole);
+          document.cookie = `buddy_bypass_role=${userRole}; path=/; max-age=2592000`;
+        }
+      }
 
       const apiRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/v1/users/me`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -68,6 +95,7 @@ function VerifyContent() {
         if (userData?.role) {
           userRole = userData.role;
           localStorage.setItem("buddy_user_role", userRole!);
+          document.cookie = `buddy_bypass_role=${userRole!}; path=/; max-age=2592000`;
         }
         if (userData?.fullName) {
           localStorage.setItem("buddy_user_name", userData.fullName);
@@ -174,6 +202,27 @@ function VerifyContent() {
         }
       }
 
+      if (isBypass) {
+        const storedRole = localStorage.getItem("buddy_user_role") || "buddy";
+        const storedName = localStorage.getItem("buddy_user_name") || "";
+        const userId = generateDeterministicUUID(targetIdentifier);
+        const bypassToken = `BYPASS_${storedRole}_${userId}_${encodeURIComponent(targetIdentifier)}`;
+
+        document.cookie = `buddy_bypass_token=${bypassToken}; path=/; max-age=2592000`;
+        document.cookie = `buddy_bypass_role=${storedRole}; path=/; max-age=2592000`;
+
+        const mockUser = {
+          id: userId,
+          email: isEmail ? targetIdentifier : undefined,
+          phone: !isEmail ? targetIdentifier : undefined,
+          app_metadata: { role: storedRole },
+          user_metadata: { role: storedRole, full_name: storedName },
+        };
+
+        await processSuccessfulAuth(mockUser, bypassToken, isEmail ? targetIdentifier : undefined);
+        return;
+      }
+
       let verifyResult;
 
       if (isEmail) {
@@ -206,7 +255,6 @@ function VerifyContent() {
     }
   };
 
-  const modeParam = searchParams?.get("mode");
   const isMagicLink = modeParam === "magic_link" || (email && email.includes("@") && modeParam !== "otp");
 
   if (isMagicLink) {
@@ -254,6 +302,15 @@ function VerifyContent() {
           Enter the 6-digit verification code sent to <span className="font-semibold text-foreground">{email || "your device"}</span>
         </p>
       </div>
+
+      {isBypass && (
+        <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2.5">
+          <span className="text-base">⚡</span>
+          <span>
+            <strong>Bypass Mode Active:</strong> Live Twilio SMS verification skipped. Enter any 6-digit code (e.g. <code>123456</code>) to verify.
+          </span>
+        </div>
+      )}
 
       <form onSubmit={handleVerify} className="space-y-5">
         {!emailParam && (

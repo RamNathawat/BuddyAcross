@@ -23,6 +23,8 @@ export function clearBuddyStorage() {
       }
     }
     keysToRemove.forEach((key) => localStorage.removeItem(key));
+    document.cookie = "buddy_bypass_token=; path=/; max-age=0";
+    document.cookie = "buddy_bypass_role=; path=/; max-age=0";
   } catch (e) {
     console.error("Failed to clear app storage:", e);
   }

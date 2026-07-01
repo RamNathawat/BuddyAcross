@@ -13,6 +13,7 @@ export type UserRole = (typeof USER_ROLES)[keyof typeof USER_ROLES];
 // Task Status
 // ============================================================
 export const TASK_STATUS = {
+  OPEN: "open",
   DRAFT: "draft",
   POSTED: "posted",
   BID_RECEIVED: "bid_received",
@@ -77,6 +78,16 @@ export const TASK_CATEGORIES = [
   { value: "gardening", label: "Gardening" },
   { value: "errands", label: "Errands" },
   { value: "other", label: "Other" },
+  { value: "Home Cleaning", label: "Home Cleaning" },
+  { value: "Package Delivery", label: "Package Delivery" },
+  { value: "Plumbing & Repairs", label: "Plumbing & Repairs" },
+  { value: "Electrical Works", label: "Electrical Works" },
+  { value: "Pet Sitting", label: "Pet Sitting" },
+  { value: "Tutoring & Education", label: "Tutoring & Education" },
+  { value: "Tech Support", label: "Tech Support" },
+  { value: "Carpentry", label: "Carpentry" },
+  { value: "Event Assistance", label: "Event Assistance" },
+  { value: "Cook / Chef", label: "Cook / Chef" },
 ] as const;
 
 export type TaskCategory = (typeof TASK_CATEGORIES)[number]["value"];

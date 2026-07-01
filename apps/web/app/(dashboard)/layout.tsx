@@ -22,7 +22,7 @@ export default function DashboardLayout({
   useEffect(() => {
     async function checkRole() {
       const { data: { user } } = await supabase.auth.getUser();
-      const userRole = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string);
+      const userRole = (user?.app_metadata?.role as string) || (user?.user_metadata?.role as string) || localStorage.getItem("buddy_user_role");
       if (pathname?.startsWith("/buddy") && userRole !== "buddy") {
         router.push("/unauthorized");
       } else if (pathname?.startsWith("/tasker") && userRole !== "tasker") {

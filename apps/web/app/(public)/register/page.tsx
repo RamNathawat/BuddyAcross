@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -13,8 +13,22 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("Bengaluru");
   const [loading, setLoading] = useState(false);
+  const [bypassTwilio, setBypassTwilio] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("buddy_bypass_twilio");
+    if (saved !== null) {
+      setBypassTwilio(saved === "true");
+    }
+  }, []);
+
+  const toggleBypass = () => {
+    const next = !bypassTwilio;
+    setBypassTwilio(next);
+    localStorage.setItem("buddy_bypass_twilio", next ? "true" : "false");
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +70,12 @@ export default function RegisterPage() {
         localStorage.setItem("buddy_user_email", targetIdentifier);
       } else {
         localStorage.setItem("buddy_user_phone", targetIdentifier);
+      }
+
+      if (bypassTwilio) {
+        toast.success("Bypass Mode: Skipped live OTP. Enter any code on the next screen.");
+        router.push(`/verify?email=${encodeURIComponent(targetIdentifier)}&bypass=true`);
+        return;
       }
 
       let authError = null;
@@ -135,6 +155,30 @@ export default function RegisterPage() {
           <div className="space-y-1.5 text-center sm:text-left">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Create your account</h1>
             <p className="text-muted-foreground text-sm">Join the neighbourhood task network in under a minute</p>
+          </div>
+
+          {/* Bypass Toggle Banner */}
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 transition-all">
+            <div className="flex items-center gap-2.5">
+              <div className={`h-2.5 w-2.5 rounded-full ${bypassTwilio ? "bg-amber-500 animate-pulse" : "bg-muted-foreground"}`} />
+              <div>
+                <div className="font-semibold text-xs sm:text-sm text-foreground">Bypass Twilio SMS (Dev Mode)</div>
+                <div className="text-[11px] text-muted-foreground">Skip live SMS verification to prevent OTP sending errors</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleBypass}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer ${
+                bypassTwilio ? "bg-amber-500" : "bg-muted"
+              }`}
+            >
+              <div
+                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                  bypassTwilio ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
 
           <form onSubmit={handleRegister} className="space-y-5">
