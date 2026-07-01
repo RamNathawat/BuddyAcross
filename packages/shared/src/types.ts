@@ -5,7 +5,7 @@ import type {
   EscrowStatus,
   KycStatus,
   TaskCategory,
-} from "./constants";
+} from "./constants.js";
 
 // ============================================================
 // API Response Wrapper

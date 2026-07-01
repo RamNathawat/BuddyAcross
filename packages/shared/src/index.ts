@@ -1,4 +1,4 @@
 // @buddyacross/shared — barrel export
-export * from "./constants";
-export * from "./types";
-export * from "./utils";
+export * from "./constants.js";
+export * from "./types.js";
+export * from "./utils.js";
